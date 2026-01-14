@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Admin Panel - Gestión de Correos</title>
+    <meta name="description"
+        content="Panel de administración para gestionar cuentas de correo electrónico en dominios alojados en Bluehost/cPanel">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">📧</div>
+                    <span class="logo-text">MailAdmin</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-section="emails">
+                    <span class="nav-icon">✉️</span>
+                    <span class="nav-text">Correos</span>
+                </a>
+                <a href="#" class="nav-item" data-section="forwarders">
+                    <span class="nav-icon">↪️</span>
+                    <span class="nav-text">Reenvíos</span>
+                </a>
+                <a href="#" class="nav-item" data-section="tracking">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-text">Tracking</span>
+                </a>
+                <a href="#" class="nav-item admin-only" data-section="users" id="navUsers">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Usuarios</span>
+                </a>
+                <a href="#" class="nav-item" data-section="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Configuración</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Conectando...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+                    <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <div class="domain-selector">
+                        <label>Dominio:</label>
+                        <select id="domainSelect" class="domain-select">
+                            <option value="">Cargando dominios...</option>
+                        </select>
+                    </div>
+                    <div class="search-box">
+                        <input type="text" placeholder="Buscar correo..." id="searchInput" class="search-input">
+                        <span class="search-icon">🔍</span>
+                    </div>
+                    <button class="btn btn-primary" id="addEmailBtn">
+                        <span class="btn-icon">+</span>
+                        <span class="btn-text">Nuevo Correo</span>
+                    </button>
+
+                    <!-- User Menu -->
+                    <div class="user-menu" id="userMenu">
+                        <button class="user-menu-btn" id="userMenuBtn">
+                            <div class="user-avatar" id="userAvatar">LB</div>
+                            <span class="user-name" id="userName">Usuario</span>
+                            <span class="user-role-badge" id="userRoleBadge">Admin</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="user-dropdown" id="userDropdown">
+                            <div class="dropdown-header">
+                                <div class="dropdown-user-info">
+                                    <span class="dropdown-user-name" id="dropdownUserName">Usuario</span>
+                                    <span class="dropdown-user-email" id="dropdownUserEmail">email@example.com</span>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item" id="logoutBtn">
+                                <span class="dropdown-icon">🚪</span>
+                                Cerrar Sesión
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area" id="contentArea">
+                <!-- Stats Cards -->
+                <section class="stats-section" id="statsSection">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon stat-icon-primary">✉️</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="totalEmails">-</span>
+                                <span class="stat-label">Total Correos</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon stat-icon-success">✅</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="activeEmails">-</span>
+                                <span class="stat-label">Activos</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon stat-icon-warning">⏸️</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="suspendedEmails">-</span>
+                                <span class="stat-label">Suspendidos</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon stat-icon-info">📁</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="totalStorage">-</span>
+                                <span class="stat-label">Almacenamiento</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Email Table -->
+                <section class="table-section" id="emailsSection">
+                    <div class="section-header">
+                        <h2>Cuentas de Correo</h2>
+                        <div class="section-actions">
+                            <button class="btn btn-ghost" id="refreshBtn">
+                                🔄 Actualizar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table" id="emailsTable">
+                            <thead>
+                                <tr>
+                                    <th>Correo Electrónico</th>
+                                    <th>Estado</th>
+                                    <th>Uso de Disco</th>
+                                    <th>Cuota</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emailsTableBody">
+                                <tr class="loading-row">
+                                    <td colspan="5">
+                                        <div class="loading-spinner"></div>
+                                        <span>Cargando correos...</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Tracking Section -->
+                <section class="tracking-section hidden" id="trackingSection">
+                    <div class="section-header">
+                        <h2>Historial de Actividad</h2>
+                    </div>
+                    <div class="tracking-list" id="trackingList">
+                        <p class="empty-state">Las actividades se registrarán aquí...</p>
+                    </div>
+                </section>
+
+                <!-- Users Section (Admin Only) -->
+                <section class="users-section hidden" id="usersSection">
+                    <div class="section-header">
+                        <h2>👥 Gestión de Usuarios</h2>
+                        <div class="section-actions">
+                            <button class="btn btn-primary" id="addUserBtn">
+                                <span class="btn-icon">+</span>
+                                <span class="btn-text">Nuevo Usuario</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table" id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th>Último Acceso</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr class="loading-row">
+                                    <td colspan="5">
+                                        <div class="loading-spinner"></div>
+                                        <span>Cargando usuarios...</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Email Modal -->
+    <div class="modal-overlay" id="addEmailModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Crear Nueva Cuenta de Correo</h3>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            <form id="addEmailForm" class="modal-form">
+                <div class="form-group">
+                    <label for="emailUsername">Usuario</label>
+                    <div class="email-input-wrapper">
+                        <input type="text" id="emailUsername" name="email" required placeholder="usuario"
+                            pattern="[a-zA-Z0-9._-]+" title="Solo letras, números, puntos, guiones y guiones bajos">
+                        <span class="email-domain" id="emailDomainDisplay">@domain.com</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="emailPassword">Contraseña</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="emailPassword" name="password" required minlength="8"
+                            placeholder="Mínimo 8 caracteres">
+                        <button type="button" class="toggle-password" id="togglePassword">👁️</button>
+                        <button type="button" class="generate-password" id="generatePassword">🎲</button>
+                    </div>
+                    <div class="password-strength" id="passwordStrength"></div>
+                </div>
+                <div class="form-group">
+                    <label for="emailQuota">Cuota de Almacenamiento (MB)</label>
+                    <input type="number" id="emailQuota" name="quota" value="1024" min="1"
+                        placeholder="1024 = 1GB, 0 = ilimitado">
+                    <small class="form-hint">0 para almacenamiento ilimitado</small>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-ghost" id="cancelAddEmail">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-icon">+</span>
+                        Crear Cuenta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" id="changePasswordModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Cambiar Contraseña</h3>
+                <button class="modal-close" id="closePasswordModalBtn">&times;</button>
+            </div>
+            <form id="changePasswordForm" class="modal-form">
+                <input type="hidden" id="passwordEmail" name="email">
+                <input type="hidden" id="passwordDomain" name="domain">
+                <div class="form-group">
+                    <label>Cuenta de correo:</label>
+                    <p class="form-static" id="passwordEmailDisplay">-</p>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Nueva Contraseña</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="newPassword" name="password" required minlength="8"
+                            placeholder="Mínimo 8 caracteres">
+                        <button type="button" class="toggle-password" id="toggleNewPassword">👁️</button>
+                        <button type="button" class="generate-password" id="generateNewPassword">🎲</button>
+                    </div>
+                    <div class="password-strength" id="newPasswordStrength"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-ghost" id="cancelChangePassword">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal-overlay" id="confirmDeleteModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>⚠️ Confirmar Eliminación</h3>
+                <button class="modal-close" id="closeDeleteModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar la cuenta:</p>
+                <p class="email-to-delete" id="emailToDelete">-</p>
+                <p class="warning-text">Esta acción no se puede deshacer. Todos los correos serán eliminados
+                    permanentemente.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" id="cancelDelete">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Modal (Create/Edit) -->
+    <div class="modal-overlay" id="userModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="userModalTitle">Nuevo Usuario</h3>
+                <button class="modal-close" id="closeUserModalBtn">&times;</button>
+            </div>
+            <form id="userForm" class="modal-form">
+                <input type="hidden" id="editUserId" name="userId">
+                <div class="form-group">
+                    <label for="userName">Nombre Completo</label>
+                    <input type="text" id="userName" name="name" required placeholder="Nombre del usuario">
+                </div>
+                <div class="form-group">
+                    <label for="userEmail">Correo Electrónico</label>
+                    <input type="email" id="userEmail" name="email" required placeholder="correo@ejemplo.com">
+                </div>
+                <div class="form-group">
+                    <label for="userRole">Rol</label>
+                    <select id="userRole" name="role" required class="domain-select">
+                        <option value="gerente">Gerente (Solo crear correos)</option>
+                        <option value="admin">Administrador (Acceso completo)</option>
+                    </select>
+                    <small class="form-hint">
+                        <strong>Gerente:</strong> Puede crear y gestionar correos electrónicos<br>
+                        <strong>Admin:</strong> Acceso completo, incluyendo gestión de usuarios
+                    </small>
+                </div>
+                <div class="form-group" id="userPasswordGroup">
+                    <label for="userPassword">Contraseña</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="userPassword" name="password" minlength="8"
+                            placeholder="Mínimo 8 caracteres">
+                        <button type="button" class="toggle-password" id="toggleUserPassword">👁️</button>
+                        <button type="button" class="generate-password" id="generateUserPassword">🎲</button>
+                    </div>
+                    <div class="password-strength" id="userPasswordStrength"></div>
+                    <small class="form-hint" id="passwordHint">El usuario recibirá esta contraseña temporal</small>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-ghost" id="cancelUserModal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="submitUserBtn">
+                        <span class="btn-icon">+</span>
+                        Crear Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm User Delete Modal -->
+    <div class="modal-overlay" id="confirmUserDeleteModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>⚠️ Desactivar Usuario</h3>
+                <button class="modal-close" id="closeUserDeleteModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas desactivar este usuario?</p>
+                <p class="email-to-delete" id="userToDelete">-</p>
+                <p class="warning-text">El usuario no podrá acceder al sistema hasta que se reactive.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" id="cancelUserDelete">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmUserDelete">Desactivar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="supabase.js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

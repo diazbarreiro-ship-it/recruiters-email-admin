@@ -1,7 +1,34 @@
 [build]
   publish = "public"
-  command = "echo 'No build required'"
+  functions = "netlify/functions"
 
+# Redirect API calls to Netlify Functions
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/health"
+  status = 200
+
+[[redirects]]
+  from = "/api/domains"
+  to = "/.netlify/functions/domains"
+  status = 200
+
+[[redirects]]
+  from = "/api/emails"
+  to = "/.netlify/functions/emails"
+  status = 200
+
+[[redirects]]
+  from = "/api/emails/*"
+  to = "/.netlify/functions/emails/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/forwarders"
+  to = "/.netlify/functions/forwarders"
+  status = 200
+
+# SPA fallback - must be last
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -1227,9 +1227,6 @@ async function init() {
 
     setupEventListeners();
 
-    // Check if we're running on Netlify (static hosting) or local server
-    const isNetlify = window.location.hostname.includes('netlify.app');
-
     // Check server connection
     UI.updateConnectionStatus(null, 'Conectando...');
     const isConnected = await API.checkHealth();
@@ -1242,36 +1239,14 @@ async function init() {
         await loadEmails();
 
         UI.showToast('success', 'Bienvenido', `Hola ${Auth.getUser()?.name || 'Usuario'}`);
-    } else if (isNetlify) {
-        // Running on Netlify without backend - show info message
-        UI.updateConnectionStatus(false, 'Modo Demo');
-        UI.showToast('info', 'Modo Demo', 'Las funciones de cPanel no están disponibles. El backend está desactivado en este entorno.');
-
-        // Show demo message in emails table
-        elements.emailsTableBody.innerHTML = `
-            <tr>
-                <td colspan="5">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🔒</div>
-                        <p><strong>Modo Demo - Sin Backend</strong></p>
-                        <p style="color: var(--color-text-muted); margin-top: 8px;">
-                            Esta versión desplegada en Netlify es solo frontend.<br>
-                            Para gestionar correos de cPanel, ejecuta la aplicación localmente con <code>npm start</code>
-                        </p>
-                    </div>
-                </td>
-            </tr>
-        `;
-
-        // Show welcome toast anyway
-        UI.showToast('success', 'Bienvenido', `Hola ${Auth.getUser()?.name || 'Usuario'} - Modo Demo`);
     } else {
         UI.updateConnectionStatus(false, 'Sin conexión');
-        UI.showToast('error', 'Error de Conexión', 'No se pudo conectar al servidor. Asegúrate de que el servidor esté corriendo.');
+        UI.showToast('error', 'Error de Conexión', 'No se pudo conectar al servidor. Verifica la configuración del backend.');
     }
 }
 
 // Start the application
 document.addEventListener('DOMContentLoaded', init);
+
 
 

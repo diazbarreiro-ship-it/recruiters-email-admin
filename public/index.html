@@ -156,6 +156,26 @@
                         </div>
                     </div>
 
+                    <!-- Filters Bar -->
+                    <div class="filters-bar" id="filtersBar">
+                        <div class="filter-group">
+                            <label for="filterStatus">Estado:</label>
+                            <select id="filterStatus" class="filter-select">
+                                <option value="all">Todos</option>
+                                <option value="active">Activos</option>
+                                <option value="suspended">Suspendidos</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filterSearch">Buscar:</label>
+                            <input type="text" id="filterSearch" class="filter-input" placeholder="Buscar por email...">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-results" id="filterResults">Mostrando todos</span>
+                        </div>
+                        <button class="btn btn-ghost btn-sm" id="clearFiltersBtn">✕ Limpiar</button>
+                    </div>
+
                     <div class="table-container">
                         <table class="data-table" id="emailsTable">
                             <thead>
@@ -348,6 +368,17 @@
                     <small class="form-hint">
                         <strong>Gerente:</strong> Puede crear y gestionar correos electrónicos<br>
                         <strong>Admin:</strong> Acceso completo, incluyendo gestión de usuarios
+                    </small>
+                </div>
+                <!-- Allowed Domains (for gerentes) -->
+                <div class="form-group" id="allowedDomainsGroup">
+                    <label>Dominios Permitidos</label>
+                    <div class="domains-checklist" id="domainsChecklist">
+                        <p class="loading-text">Cargando dominios...</p>
+                    </div>
+                    <small class="form-hint">
+                        <strong>Gerentes:</strong> Solo podrán ver y gestionar los dominios seleccionados<br>
+                        <strong>Admins:</strong> Tienen acceso a todos los dominios automáticamente
                     </small>
                 </div>
                 <div class="form-group" id="userPasswordGroup">

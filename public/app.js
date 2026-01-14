@@ -13,12 +13,17 @@ const state = {
     currentDomain: '',
     domains: [],
     emails: [],
+    filteredEmails: [],
     isLoading: false,
     currentSection: 'dashboard',
     emailToDelete: null,
     users: [],
     userToEdit: null,
-    userToDelete: null
+    userToDelete: null,
+    filters: {
+        status: 'all',
+        search: ''
+    }
 };
 
 // DOM Elements
@@ -56,6 +61,12 @@ const elements = {
 
     // Table
     emailsTableBody: document.getElementById('emailsTableBody'),
+
+    // Filters
+    filterStatus: document.getElementById('filterStatus'),
+    filterSearch: document.getElementById('filterSearch'),
+    filterResults: document.getElementById('filterResults'),
+    clearFiltersBtn: document.getElementById('clearFiltersBtn'),
 
     // Sections
     statsSection: document.getElementById('statsSection'),
@@ -116,6 +127,8 @@ const elements = {
     toggleUserPassword: document.getElementById('toggleUserPassword'),
     generateUserPassword: document.getElementById('generateUserPassword'),
     userPasswordStrength: document.getElementById('userPasswordStrength'),
+    allowedDomainsGroup: document.getElementById('allowedDomainsGroup'),
+    domainsChecklist: document.getElementById('domainsChecklist'),
 
     // Confirm User Delete Modal
     confirmUserDeleteModal: document.getElementById('confirmUserDeleteModal'),
@@ -641,7 +654,19 @@ function getActivityTitle(type) {
 // ============================================
 async function loadDomains() {
     try {
-        const domains = await API.getDomains();
+        let domains = await API.getDomains();
+
+        // Filter domains based on user permissions
+        const user = Auth.getUser();
+        if (user && user.role === 'gerente' && user.allowed_domains && user.allowed_domains.length > 0) {
+            // Gerente: only show allowed domains
+            domains = domains.filter(domain => user.allowed_domains.includes(domain));
+
+            if (domains.length === 0) {
+                UI.showToast('warning', 'Sin Acceso', 'No tienes acceso a ningún dominio. Contacta al administrador.');
+            }
+        }
+
         state.domains = domains;
 
         elements.domainSelect.innerHTML = domains.map((domain, index) => `
@@ -665,7 +690,9 @@ async function loadEmails() {
         const emails = await API.getEmails(state.currentDomain);
         state.emails = emails;
 
-        UI.renderEmails();
+        // Apply filters
+        applyFilters();
+
         UI.updateStats();
 
         // Sync to Supabase for tracking
@@ -686,6 +713,40 @@ async function loadEmails() {
             </tr>
         `;
     }
+}
+
+// Apply filters to emails
+function applyFilters() {
+    let filtered = [...state.emails];
+
+    // Filter by status
+    if (state.filters.status === 'active') {
+        filtered = filtered.filter(e => !e.suspended_login);
+    } else if (state.filters.status === 'suspended') {
+        filtered = filtered.filter(e => e.suspended_login);
+    }
+
+    // Filter by search
+    if (state.filters.search) {
+        const search = state.filters.search.toLowerCase();
+        filtered = filtered.filter(e =>
+            e.email?.toLowerCase().includes(search) ||
+            e.user?.toLowerCase().includes(search)
+        );
+    }
+
+    state.filteredEmails = filtered;
+
+    // Update filter results text
+    if (elements.filterResults) {
+        if (state.filters.status !== 'all' || state.filters.search) {
+            elements.filterResults.textContent = `${filtered.length} de ${state.emails.length} correos`;
+        } else {
+            elements.filterResults.textContent = `${state.emails.length} correos`;
+        }
+    }
+
+    UI.renderEmails(filtered);
 }
 
 async function loadTracking() {
@@ -717,20 +778,44 @@ function setupEventListeners() {
         loadEmails();
     });
 
-    // Search
+    // Search (header search - using filter system)
     elements.searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
-        const filtered = state.emails.filter(email =>
-            email.email.toLowerCase().includes(query) ||
-            email.user.toLowerCase().includes(query)
-        );
-        UI.renderEmails(filtered);
+        state.filters.search = e.target.value;
+        applyFilters();
     });
 
     // Refresh
     elements.refreshBtn.addEventListener('click', () => {
         loadEmails();
     });
+
+    // Filter listeners
+    if (elements.filterStatus) {
+        elements.filterStatus.addEventListener('change', (e) => {
+            state.filters.status = e.target.value;
+            applyFilters();
+        });
+    }
+
+    if (elements.filterSearch) {
+        elements.filterSearch.addEventListener('input', (e) => {
+            state.filters.search = e.target.value;
+            // Also sync with header search
+            elements.searchInput.value = e.target.value;
+            applyFilters();
+        });
+    }
+
+    if (elements.clearFiltersBtn) {
+        elements.clearFiltersBtn.addEventListener('click', () => {
+            state.filters.status = 'all';
+            state.filters.search = '';
+            elements.filterStatus.value = 'all';
+            elements.filterSearch.value = '';
+            elements.searchInput.value = '';
+            applyFilters();
+        });
+    }
 
     // Add Email Modal
     elements.addEmailBtn.addEventListener('click', () => {
@@ -1015,7 +1100,57 @@ function openUserModal(user = null) {
         elements.submitUserBtn.innerHTML = '<span class="btn-icon">+</span> Crear Usuario';
     }
 
+    // Render domains checklist
+    renderDomainsChecklist(user?.allowed_domains || []);
+
+    // Update domains group visibility based on role
+    updateDomainsGroupVisibility();
+
+    // Listen for role changes
+    elements.userRoleSelect.addEventListener('change', updateDomainsGroupVisibility);
+
     UI.openModal(elements.userModal);
+}
+
+// Render the domains checklist in user modal
+function renderDomainsChecklist(selectedDomains = []) {
+    if (!elements.domainsChecklist) return;
+
+    if (state.domains.length === 0) {
+        elements.domainsChecklist.innerHTML = '<p class="loading-text">No hay dominios disponibles</p>';
+        return;
+    }
+
+    elements.domainsChecklist.innerHTML = state.domains.map(domain => `
+        <div class="domain-checkbox-item">
+            <input type="checkbox" 
+                   id="domain_${domain.replace(/\./g, '_')}" 
+                   name="allowed_domains" 
+                   value="${domain}"
+                   ${selectedDomains.includes(domain) ? 'checked' : ''}>
+            <label for="domain_${domain.replace(/\./g, '_')}">${domain}</label>
+        </div>
+    `).join('');
+}
+
+// Update domains group visibility based on selected role
+function updateDomainsGroupVisibility() {
+    if (!elements.allowedDomainsGroup) return;
+
+    const role = elements.userRoleSelect.value;
+    if (role === 'admin') {
+        elements.allowedDomainsGroup.classList.add('admin-role');
+    } else {
+        elements.allowedDomainsGroup.classList.remove('admin-role');
+    }
+}
+
+// Get selected domains from checklist
+function getSelectedDomains() {
+    if (!elements.domainsChecklist) return [];
+
+    const checkboxes = elements.domainsChecklist.querySelectorAll('input[name="allowed_domains"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
 }
 
 async function saveUser() {
@@ -1024,6 +1159,7 @@ async function saveUser() {
     const email = document.getElementById('userEmail').value.trim();
     const role = elements.userRoleSelect.value;
     const password = elements.userPasswordInput.value;
+    const allowed_domains = role === 'admin' ? [] : getSelectedDomains();
 
     if (!name || !email) {
         UI.showToast('error', 'Error', 'Por favor completa todos los campos requeridos');
@@ -1033,7 +1169,7 @@ async function saveUser() {
     try {
         if (userId) {
             // Update existing user
-            const updates = { name, email, role };
+            const updates = { name, email, role, allowed_domains };
             if (password) {
                 updates.password = password;
             }
@@ -1045,7 +1181,7 @@ async function saveUser() {
                 UI.showToast('error', 'Error', 'La contraseña debe tener al menos 8 caracteres');
                 return;
             }
-            await UserManager.createUser({ name, email, password, role });
+            await UserManager.createUser({ name, email, password, role, allowed_domains });
             UI.showToast('success', 'Usuario Creado', `${name} ha sido creado correctamente`);
         }
 

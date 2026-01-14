@@ -98,7 +98,8 @@ const Auth = {
                 email: user.email,
                 name: user.name,
                 role: user.role,
-                temp_password: user.temp_password
+                temp_password: user.temp_password,
+                allowed_domains: user.allowed_domains || []
             };
             this.sessionToken = token;
 
@@ -210,7 +211,7 @@ const UserManager = {
     async getAllUsers() {
         try {
             const users = await supabase.query('platform_users', {
-                select: 'id,email,name,role,is_active,temp_password,last_login,created_at',
+                select: 'id,email,name,role,is_active,temp_password,last_login,created_at,allowed_domains',
                 order: 'created_at.desc'
             });
             return users;
@@ -243,6 +244,7 @@ const UserManager = {
                 role: userData.role || 'gerente',
                 is_active: true,
                 temp_password: true,
+                allowed_domains: userData.allowed_domains || [],
                 created_by: Auth.currentUser.id
             };
 

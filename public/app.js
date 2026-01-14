@@ -687,7 +687,19 @@ async function loadEmails() {
     UI.renderLoading();
 
     try {
-        const emails = await API.getEmails(state.currentDomain);
+        let emails = await API.getEmails(state.currentDomain);
+
+        // Filter emails by current domain (in case API doesn't filter)
+        if (state.currentDomain) {
+            emails = emails.filter(e => e.domain === state.currentDomain);
+        }
+
+        // For gerentes: additional filter by allowed domains
+        const user = Auth.getUser();
+        if (user && user.role === 'gerente' && user.allowed_domains && user.allowed_domains.length > 0) {
+            emails = emails.filter(e => user.allowed_domains.includes(e.domain));
+        }
+
         state.emails = emails;
 
         // Apply filters

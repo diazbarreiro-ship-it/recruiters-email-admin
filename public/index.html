@@ -88,7 +88,7 @@
                     <div class="user-menu" id="userMenu">
                         <button class="user-menu-btn" id="userMenuBtn">
                             <div class="user-avatar" id="userAvatar">LB</div>
-                            <span class="user-name" id="userName">Usuario</span>
+                            <span class="user-name" id="navUserName">Usuario</span>
                             <span class="user-role-badge" id="userRoleBadge">Admin</span>
                             <span class="dropdown-arrow">▼</span>
                         </button>
@@ -300,6 +300,10 @@
                                         <label for="smtpPass">Contraseña SMTP</label>
                                         <div class="password-wrapper">
                                             <input type="password" id="smtpPass" placeholder="••••••••">
+                                            <button type="button" class="toggle-password" id="toggleSmtpPassword"
+                                                title="Mostrar/Ocultar">👁️</button>
+                                            <button type="button" class="copy-password" id="copySmtpPassword"
+                                                title="Copiar">📋</button>
                                         </div>
                                     </div>
                                 </div>
@@ -339,7 +343,7 @@
                     <label for="emailUsername">Usuario</label>
                     <div class="email-input-wrapper">
                         <input type="text" id="emailUsername" name="email" required placeholder="usuario"
-                            pattern="[a-zA-Z0-9._-]+" title="Solo letras, números, puntos, guiones y guiones bajos">
+                            pattern="[a-zA-Z0-9._\-]+" title="Solo letras, números, puntos, guiones y guiones bajos">
                         <span class="email-domain" id="emailDomainDisplay">@domain.com</span>
                     </div>
                 </div>
@@ -438,8 +442,8 @@
             <form id="userForm" class="modal-form">
                 <input type="hidden" id="editUserId" name="userId">
                 <div class="form-group">
-                    <label for="userName">Nombre Completo</label>
-                    <input type="text" id="userName" name="name" required placeholder="Nombre del usuario">
+                    <label for="userModalName">Nombre Completo</label>
+                    <input type="text" id="userModalName" name="name" required placeholder="Nombre del usuario">
                 </div>
                 <div class="form-group">
                     <label for="userEmail">Correo Electrónico</label>

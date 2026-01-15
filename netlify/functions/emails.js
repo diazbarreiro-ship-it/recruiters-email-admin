@@ -71,23 +71,20 @@ async function createEmail(event) {
         return jsonResponse(400, { success: false, error: 'Email, password, and domain are required' });
     }
 
-    const params = new URLSearchParams({
-        email: email,
+    const bodyParams = JSON.stringify({
+        email: `${email}@${domain}`,
         password: password,
         quota: quota.toString(),
         domain: domain
     });
 
-    // Use POST for creation to ensure all parameters are correctly handled
+    // Use POST for creation with JSON body
     const response = await fetchUrl(
         `${getCpanelBaseUrl()}/Email/add_pop`,
         {
-            headers: {
-                ...getCpanelHeaders(),
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
+            headers: getCpanelHeaders(),
             method: 'POST',
-            body: params.toString()
+            body: bodyParams
         }
     );
     const data = await response.json();
@@ -109,11 +106,18 @@ async function deleteEmail(event, segments) {
         return jsonResponse(400, { success: false, error: 'Email and domain are required' });
     }
 
-    const params = new URLSearchParams({ email, domain });
+    const bodyParams = JSON.stringify({
+        email: `${email}@${domain}`,
+        domain: domain
+    });
 
     const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/delete_pop?${params.toString()}`,
-        { headers: getCpanelHeaders(), method: 'GET' }
+        `${getCpanelBaseUrl()}/Email/delete_pop`,
+        {
+            headers: getCpanelHeaders(),
+            method: 'POST',
+            body: bodyParams
+        }
     );
     const data = await response.json();
 
@@ -149,11 +153,19 @@ async function changePassword(email, body) {
         return jsonResponse(400, { success: false, error: 'Password and domain are required' });
     }
 
-    const params = new URLSearchParams({ email, password, domain });
+    const bodyParams = JSON.stringify({
+        email: `${email}@${domain}`,
+        password: password,
+        domain: domain
+    });
 
     const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/passwd_pop?${params.toString()}`,
-        { headers: getCpanelHeaders(), method: 'GET' }
+        `${getCpanelBaseUrl()}/Email/passwd_pop`,
+        {
+            headers: getCpanelHeaders(),
+            method: 'POST',
+            body: bodyParams
+        }
     );
     const data = await response.json();
 
@@ -172,11 +184,15 @@ async function toggleSuspend(email, body) {
     }
 
     const endpoint = suspend ? 'suspend_login' : 'unsuspend_login';
-    const params = new URLSearchParams({ email: `${email}@${domain}` });
+    const bodyParams = JSON.stringify({ email: `${email}@${domain}` });
 
     const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/${endpoint}?${params.toString()}`,
-        { headers: getCpanelHeaders(), method: 'GET' }
+        `${getCpanelBaseUrl()}/Email/${endpoint}`,
+        {
+            headers: getCpanelHeaders(),
+            method: 'POST',
+            body: bodyParams
+        }
     );
     const data = await response.json();
 
@@ -194,11 +210,19 @@ async function changeQuota(email, body) {
         return jsonResponse(400, { success: false, error: 'Quota and domain are required' });
     }
 
-    const params = new URLSearchParams({ email, quota: quota.toString(), domain });
+    const bodyParams = JSON.stringify({
+        email: `${email}@${domain}`,
+        quota: quota.toString(),
+        domain: domain
+    });
 
     const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/edit_pop_quota?${params.toString()}`,
-        { headers: getCpanelHeaders(), method: 'GET' }
+        `${getCpanelBaseUrl()}/Email/edit_pop_quota`,
+        {
+            headers: getCpanelHeaders(),
+            method: 'POST',
+            body: bodyParams
+        }
     );
     const data = await response.json();
 

@@ -46,7 +46,7 @@ const elements = {
     userMenu: document.getElementById('userMenu'),
     userMenuBtn: document.getElementById('userMenuBtn'),
     userAvatar: document.getElementById('userAvatar'),
-    userName: document.getElementById('userName'),
+    userName: document.getElementById('navUserName'),
     userRoleBadge: document.getElementById('userRoleBadge'),
     userDropdown: document.getElementById('userDropdown'),
     dropdownUserName: document.getElementById('dropdownUserName'),
@@ -115,7 +115,7 @@ const elements = {
     userModalTitle: document.getElementById('userModalTitle'),
     userForm: document.getElementById('userForm'),
     editUserId: document.getElementById('editUserId'),
-    userNameInput: document.getElementById('userName'),
+    userNameInput: document.getElementById('userModalName'),
     userEmailInput: document.getElementById('userEmail'),
     userRoleSelect: document.getElementById('userRole'),
     userPasswordInput: document.getElementById('userPassword'),
@@ -920,15 +920,16 @@ function setupEventListeners() {
             await API.createEmail(email, password, quota, domain);
             UI.showToast('success', 'Cuenta Creada', `${email}@${domain}`);
 
+            const fullEmail = `${email}@${domain}`;
+
             // Log tracking and sync with Supabase
-            await Tracking.logActivity('created', `${email}@${domain}`, domain, {
+            await Tracking.logActivity('created', fullEmail, domain, {
                 quota: quota,
                 recovery_email: recovery_email
             });
 
             // Sync to Supabase with recovery email
             if (window.Tracking) {
-                const fullEmail = `${email}@${domain}`;
                 await Tracking.syncEmails([{
                     email: fullEmail,
                     domain: domain,
@@ -1056,6 +1057,31 @@ function setupEventListeners() {
         });
     }
 
+    // SMTP Password Toggle and Copy
+    const toggleSmtpPassword = document.getElementById('toggleSmtpPassword');
+    const copySmtpPassword = document.getElementById('copySmtpPassword');
+    const smtpPassInput = document.getElementById('smtpPass');
+
+    if (toggleSmtpPassword && smtpPassInput) {
+        toggleSmtpPassword.addEventListener('click', () => {
+            const type = smtpPassInput.type === 'password' ? 'text' : 'password';
+            smtpPassInput.type = type;
+            toggleSmtpPassword.textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
+        });
+    }
+
+    if (copySmtpPassword && smtpPassInput) {
+        copySmtpPassword.addEventListener('click', () => {
+            if (smtpPassInput.value) {
+                navigator.clipboard.writeText(smtpPassInput.value).then(() => {
+                    UI.showToast('success', 'Copiado', 'Contraseña copiada al portapapeles');
+                }).catch(() => {
+                    UI.showToast('error', 'Error', 'No se pudo copiar la contraseña');
+                });
+            }
+        });
+    }
+
     // ============================================
     // User Menu Events
     // ============================================
@@ -1167,8 +1193,8 @@ function openUserModal(user = null) {
         // Edit mode
         elements.userModalTitle.textContent = 'Editar Usuario';
         elements.editUserId.value = user.id;
-        document.getElementById('userName').value = user.name;
-        document.getElementById('userEmail').value = user.email;
+        elements.userNameInput.value = user.name;
+        elements.userEmailInput.value = user.email;
         elements.userRoleSelect.value = user.role;
         elements.userPasswordInput.required = false;
         elements.passwordHint.textContent = 'Dejar en blanco para mantener la contraseña actual';
@@ -1237,8 +1263,8 @@ function getSelectedDomains() {
 
 async function saveUser() {
     const userId = elements.editUserId.value;
-    const name = document.getElementById('userName').value.trim();
-    const email = document.getElementById('userEmail').value.trim();
+    const name = elements.userNameInput.value.trim();
+    const email = elements.userEmailInput.value.trim();
     const role = elements.userRoleSelect.value;
     const password = elements.userPasswordInput.value;
     const allowed_domains = role === 'admin' ? [] : getSelectedDomains();

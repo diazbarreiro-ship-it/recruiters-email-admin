@@ -65,6 +65,8 @@ async function createEmail(event) {
     const body = JSON.parse(event.body || '{}');
     const { email, password, quota = 1024, domain } = body;
 
+    console.log(`Creating email: ${email}@${domain} with quota ${quota}`);
+
     if (!email || !password || !domain) {
         return jsonResponse(400, { success: false, error: 'Email, password, and domain are required' });
     }
@@ -76,15 +78,24 @@ async function createEmail(event) {
         domain: domain
     });
 
+    // Use POST for creation to ensure all parameters are correctly handled
     const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/add_pop?${params.toString()}`,
-        { headers: getCpanelHeaders(), method: 'GET' }
+        `${getCpanelBaseUrl()}/Email/add_pop`,
+        {
+            headers: {
+                ...getCpanelHeaders(),
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            method: 'POST',
+            body: params.toString()
+        }
     );
     const data = await response.json();
 
     if (data.status === 1) {
         return jsonResponse(200, { success: true, message: `Email account ${email}@${domain} created successfully` });
     } else {
+        console.error('cPanel error:', data.errors);
         return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to create email account' });
     }
 }

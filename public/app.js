@@ -910,6 +910,13 @@ function setupEventListeners() {
 
         try {
             const domain = state.currentDomain;
+            console.log(`Submitting email creation: ${email}@${domain}`);
+
+            if (!domain) {
+                UI.showToast('error', 'Error', 'No hay un dominio seleccionado');
+                return;
+            }
+
             await API.createEmail(email, password, quota, domain);
             UI.showToast('success', 'Cuenta Creada', `${email}@${domain}`);
 

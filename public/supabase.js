@@ -122,28 +122,61 @@ const Tracking = {
     },
 
     // Sync emails to database for tracking
-    async syncEmails(emails, domain) {
+    async syncEmails(emails, domain, recoveryEmail = null) {
         try {
             for (const email of emails) {
                 // Check if email already exists
-                const existing = await supabase.query('tracked_emails', {
+                const existing = await supabase.query('email_accounts', {
                     select: 'id',
                     filter: `email.eq.${email.email}`
                 });
 
                 if (!existing || existing.length === 0) {
-                    await supabase.insert('tracked_emails', {
+                    await supabase.insert('email_accounts', {
                         email: email.email,
                         domain: email.domain,
                         disk_used: email.diskused,
                         disk_quota: email.diskquota,
                         is_suspended: email.suspended_login === 1,
+                        recovery_email: recoveryEmail, // Store recovery email if provided
                         synced_at: new Date().toISOString()
+                    });
+                } else if (recoveryEmail) {
+                    // Update recovery email if it's a new one during sync
+                    await supabase.update('email_accounts', existing[0].id, {
+                        recovery_email: recoveryEmail
                     });
                 }
             }
         } catch (error) {
-            console.warn('Failed to sync emails (table may not exist):', error.message);
+            console.warn('Failed to sync emails:', error.message);
+        }
+    },
+
+    // Notification Settings
+    async getNotificationSettings(domain) {
+        try {
+            const results = await supabase.query('notification_settings', {
+                filter: `domain.eq.${domain}`
+            });
+            return results && results.length > 0 ? results[0] : null;
+        } catch (error) {
+            console.warn('Failed to fetch notification settings:', error.message);
+            return null;
+        }
+    },
+
+    async saveNotificationSettings(settings) {
+        try {
+            const existing = await this.getNotificationSettings(settings.domain);
+            if (existing) {
+                return await supabase.update('notification_settings', existing.id, settings);
+            } else {
+                return await supabase.insert('notification_settings', settings);
+            }
+        } catch (error) {
+            console.error('Failed to save notification settings:', error);
+            throw error;
         }
     }
 };

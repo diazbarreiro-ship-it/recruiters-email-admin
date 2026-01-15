@@ -243,6 +243,86 @@
                         </table>
                     </div>
                 </section>
+
+                <!-- Settings Section -->
+                <section class="settings-section hidden" id="settingsSection">
+                    <div class="section-header">
+                        <h2>⚙️ Configuración del Sistema</h2>
+                    </div>
+
+                    <div class="settings-grid">
+                        <div class="settings-card">
+                            <div class="settings-card-header">
+                                <h3>📧 Plantilla de Bienvenida</h3>
+                                <p>Configura el correo que se envía al crear una nueva cuenta</p>
+                            </div>
+                            <form id="notificationSettingsForm" class="settings-form">
+                                <div class="form-group">
+                                    <label for="welcomeSubject">Asunto del Correo</label>
+                                    <input type="text" id="welcomeSubject" placeholder="Bienvenido a tu nueva cuenta">
+                                </div>
+                                <div class="form-group">
+                                    <label for="welcomeBody">Cuerpo del Mensaje</label>
+                                    <textarea id="welcomeBody" rows="8"
+                                        placeholder="Hola, tu cuenta ha sido creada..."></textarea>
+                                    <div class="template-hints">
+                                        <span>Etiquetas:</span>
+                                        <code title="Email de la cuenta">{email}</code>
+                                        <code title="Contraseña creada">{password}</code>
+                                        <code title="Dominio de la cuenta">{domain}</code>
+                                    </div>
+                                </div>
+
+                                <div class="settings-divider"></div>
+
+                                <div class="settings-card-header">
+                                    <h3>🚀 Configuración SMTP (Opcional)</h3>
+                                    <p>Si no se configura, se usará el servidor predeterminado</p>
+                                </div>
+
+                                <div class="settings-row">
+                                    <div class="form-group">
+                                        <label for="smtpHost">Servidor SMTP</label>
+                                        <input type="text" id="smtpHost" placeholder="mail.tu-dominio.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="smtpPort">Puerto</label>
+                                        <input type="number" id="smtpPort" placeholder="587">
+                                    </div>
+                                </div>
+
+                                <div class="settings-row">
+                                    <div class="form-group">
+                                        <label for="smtpUser">Usuario SMTP</label>
+                                        <input type="text" id="smtpUser" placeholder="notificaciones@tu-dominio.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="smtpPass">Contraseña SMTP</label>
+                                        <div class="password-wrapper">
+                                            <input type="password" id="smtpPass" placeholder="••••••••">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-row">
+                                    <div class="form-group">
+                                        <label for="fromName">Nombre Remitente</label>
+                                        <input type="text" id="fromName" placeholder="Mail Admin">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="fromEmail">Email Remitente</label>
+                                        <input type="email" id="fromEmail" placeholder="no-reply@tu-dominio.com">
+                                    </div>
+                                </div>
+
+                                <div class="settings-actions">
+                                    <button type="submit" class="btn btn-primary" id="saveSettingsBtn">Guardar
+                                        Configuración</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -278,6 +358,12 @@
                     <input type="number" id="emailQuota" name="quota" value="1024" min="1"
                         placeholder="1024 = 1GB, 0 = ilimitado">
                     <small class="form-hint">0 para almacenamiento ilimitado</small>
+                </div>
+                <div class="form-group">
+                    <label for="recoveryEmail">Email Secundario (Recuperación)</label>
+                    <input type="email" id="recoveryEmail" name="recoveryEmail"
+                        placeholder="correo.recuperacion@gmail.com">
+                    <small class="form-hint">Aquí se enviarán las credenciales de acceso automáticamente</small>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-ghost" id="cancelAddEmail">Cancelar</button>

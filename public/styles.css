@@ -1770,3 +1770,105 @@ body.is-admin .admin-only {
         width: 100%;
     }
 }
+
+/* ============================================
+   Settings Section
+   ============================================ */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+    padding: 24px;
+}
+
+.settings-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.settings-card-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.settings-card-header h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.settings-card-header p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.settings-form {
+    padding: 24px;
+}
+
+.settings-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 24px 0;
+}
+
+.settings-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.template-hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+    align-items: center;
+}
+
+.template-hints span {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.template-hints code {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    color: var(--color-primary);
+    cursor: help;
+}
+
+.settings-actions {
+    margin-top: 32px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+textarea#welcomeBody {
+    resize: vertical;
+    min-height: 150px;
+    font-family: inherit;
+    line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+        padding: 16px;
+    }
+
+    .settings-row {
+        grid-template-columns: 1fr;
+    }
+}

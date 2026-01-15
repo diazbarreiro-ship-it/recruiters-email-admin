@@ -130,6 +130,19 @@ const elements = {
     allowedDomainsGroup: document.getElementById('allowedDomainsGroup'),
     domainsChecklist: document.getElementById('domainsChecklist'),
 
+    // Settings
+    settingsSection: document.getElementById('settingsSection'),
+    notificationSettingsForm: document.getElementById('notificationSettingsForm'),
+    welcomeSubject: document.getElementById('welcomeSubject'),
+    welcomeBody: document.getElementById('welcomeBody'),
+    smtpHost: document.getElementById('smtpHost'),
+    smtpPort: document.getElementById('smtpPort'),
+    smtpUser: document.getElementById('smtpUser'),
+    smtpPass: document.getElementById('smtpPass'),
+    fromName: document.getElementById('fromName'),
+    fromEmail: document.getElementById('fromEmail'),
+    recoveryEmail: document.getElementById('recoveryEmail'),
+
     // Confirm User Delete Modal
     confirmUserDeleteModal: document.getElementById('confirmUserDeleteModal'),
     userToDelete: document.getElementById('userToDelete'),
@@ -225,6 +238,17 @@ const API = {
         const data = await response.json();
         if (!data.success) throw new Error(data.error);
         return data.forwarders;
+    },
+
+    async sendNotification(email, password, domain, to) {
+        const response = await fetch(`${this.baseUrl}/notifications`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, domain, to })
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+        return data;
     }
 };
 
@@ -423,15 +447,15 @@ const UI = {
         elements.emailsSection.classList.toggle('hidden', section !== 'dashboard' && section !== 'emails');
         elements.trackingSection.classList.toggle('hidden', section !== 'tracking');
         elements.usersSection.classList.toggle('hidden', section !== 'users');
+        elements.settingsSection.classList.toggle('hidden', section !== 'settings');
 
-        // Load tracking if needed
+        // Load data based on section
         if (section === 'tracking') {
             loadTracking();
-        }
-
-        // Load users if needed
-        if (section === 'users') {
+        } else if (section === 'users') {
             loadUsers();
+        } else if (section === 'settings') {
+            loadNotificationSettings();
         }
     },
 
@@ -787,7 +811,12 @@ function setupEventListeners() {
     elements.domainSelect.addEventListener('change', (e) => {
         state.currentDomain = e.target.value;
         elements.emailDomainDisplay.textContent = `@${e.target.value}`;
-        loadEmails();
+
+        if (state.currentSection === 'settings') {
+            loadNotificationSettings();
+        } else {
+            loadEmails();
+        }
     });
 
     // Search (header search - using filter system)
@@ -872,6 +901,7 @@ function setupEventListeners() {
         const email = elements.emailUsername.value.trim();
         const password = elements.emailPassword.value;
         const quota = parseInt(elements.emailQuota.value) || 1024;
+        const recovery_email = elements.recoveryEmail.value.trim();
 
         if (!email || !password) {
             UI.showToast('error', 'Error', 'Por favor completa todos los campos');
@@ -879,13 +909,38 @@ function setupEventListeners() {
         }
 
         try {
-            await API.createEmail(email, password, quota, state.currentDomain);
-            UI.showToast('success', 'Cuenta Creada', `${email}@${state.currentDomain}`);
+            const domain = state.currentDomain;
+            await API.createEmail(email, password, quota, domain);
+            UI.showToast('success', 'Cuenta Creada', `${email}@${domain}`);
 
-            // Log tracking
-            await Tracking.logActivity('created', `${email}@${state.currentDomain}`, state.currentDomain, {
-                quota: quota
+            // Log tracking and sync with Supabase
+            await Tracking.logActivity('created', `${email}@${domain}`, domain, {
+                quota: quota,
+                recovery_email: recovery_email
             });
+
+            // Sync to Supabase with recovery email
+            if (window.Tracking) {
+                const fullEmail = `${email}@${domain}`;
+                await Tracking.syncEmails([{
+                    email: fullEmail,
+                    domain: domain,
+                    diskused: 0,
+                    diskquota: quota,
+                    suspended_login: 0
+                }], domain, recovery_email);
+            }
+
+            // Send notification email if recovery email is provided
+            if (recovery_email) {
+                try {
+                    await API.sendNotification(fullEmail, password, domain, recovery_email);
+                    UI.showToast('info', 'Notificación Enviada', `Credenciales enviadas a ${recovery_email}`);
+                } catch (notiError) {
+                    console.error('Error sending notification:', notiError);
+                    UI.showToast('warning', 'Aviso', 'La cuenta se creó pero no se pudo enviar el correo de notificación');
+                }
+            }
 
             UI.closeModal(elements.addEmailModal);
             loadEmails();
@@ -985,6 +1040,14 @@ function setupEventListeners() {
             elements.userMenu.classList.remove('open');
         }
     });
+
+    // Notification Settings Form
+    if (elements.notificationSettingsForm) {
+        elements.notificationSettingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveNotificationSettings();
+        });
+    }
 
     // ============================================
     // User Menu Events
@@ -1360,6 +1423,61 @@ function setupUserInterface() {
         document.body.classList.add('is-admin');
     } else {
         document.body.classList.remove('is-admin');
+    }
+}
+
+// ============================================
+// Settings Functions
+// ============================================
+async function loadNotificationSettings() {
+    if (!state.currentDomain) return;
+
+    try {
+        const settings = await Tracking.getNotificationSettings(state.currentDomain);
+        if (settings) {
+            elements.welcomeSubject.value = settings.welcome_subject || '';
+            elements.welcomeBody.value = settings.welcome_body || '';
+            elements.smtpHost.value = settings.smtp_host || '';
+            elements.smtpPort.value = settings.smtp_port || 587;
+            elements.smtpUser.value = settings.smtp_user || '';
+            elements.smtpPass.value = settings.smtp_pass || '';
+            elements.fromName.value = settings.from_name || '';
+            elements.fromEmail.value = settings.from_email || '';
+        } else {
+            // Default values
+            elements.welcomeSubject.value = 'Bienvenido a tu nueva cuenta de correo';
+            elements.welcomeBody.value = 'Hola,\n\nTu cuenta de correo ha sido creada:\n\nEmail: {email}\nContraseña: {password}\n\nPuedes acceder via Webmail en: https://webmail.{domain}\n\nSaludos,\nEquipo de IT';
+            elements.smtpHost.value = '';
+            elements.smtpPort.value = 587;
+            elements.smtpUser.value = '';
+            elements.smtpPass.value = '';
+            elements.fromName.value = 'Mail Admin';
+            elements.fromEmail.value = '';
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        UI.showToast('error', 'Error', 'No se pudieron cargar las configuraciones');
+    }
+}
+
+async function saveNotificationSettings() {
+    const settings = {
+        domain: state.currentDomain,
+        welcome_subject: elements.welcomeSubject.value,
+        welcome_body: elements.welcomeBody.value,
+        smtp_host: elements.smtpHost.value,
+        smtp_port: parseInt(elements.smtpPort.value) || 587,
+        smtp_user: elements.smtpUser.value,
+        smtp_pass: elements.smtpPass.value,
+        from_name: elements.fromName.value,
+        from_email: elements.fromEmail.value
+    };
+
+    try {
+        await Tracking.saveNotificationSettings(settings);
+        UI.showToast('success', 'Configuración Guardada', 'Los ajustes de notificación se han guardado correctamente');
+    } catch (error) {
+        UI.showToast('error', 'Error', 'No se pudo guardar la configuración');
     }
 }
 

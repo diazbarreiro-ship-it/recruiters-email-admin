@@ -318,8 +318,8 @@ const UI = {
 
     updateStats() {
         const total = state.emails.length;
-        const active = state.emails.filter(e => !e.suspended_login).length;
-        const suspended = state.emails.filter(e => e.suspended_login).length;
+        const active = state.emails.filter(e => !isEmailSuspended(e)).length;
+        const suspended = state.emails.filter(e => isEmailSuspended(e)).length;
 
         // Calculate total storage used
         let totalBytes = 0;
@@ -355,7 +355,7 @@ const UI = {
 
         elements.emailsTableBody.innerHTML = emails.map(email => {
             const initials = email.user ? email.user.substring(0, 2).toUpperCase() : '??';
-            const isSuspended = email.suspended_login === 1 || email.suspended_login === true;
+            const isSuspended = isEmailSuspended(email);
             const quotaPercent = email.diskusedpercent ? parseFloat(email.diskusedpercent) : 0;
             const quotaClass = quotaPercent > 80 ? 'high' : quotaPercent > 50 ? 'medium' : 'low';
 
@@ -628,6 +628,12 @@ window.Actions = Actions;
 // ============================================
 // Utility Functions
 // ============================================
+function isEmailSuspended(email) {
+    return email.suspended_login == 1 ||
+        email.suspended_login === true ||
+        email.suspended_login === '1';
+}
+
 function formatBytes(bytes) {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -766,6 +772,12 @@ async function loadDomains() {
 }
 
 async function loadEmails() {
+    // Reset stats to indicate loading
+    elements.totalEmails.textContent = '-';
+    elements.activeEmails.textContent = '-';
+    elements.suspendedEmails.textContent = '-';
+    elements.totalStorage.textContent = '-';
+
     UI.renderLoading();
 
     try {
@@ -815,9 +827,9 @@ function applyFilters() {
 
     // Filter by status
     if (state.filters.status === 'active') {
-        filtered = filtered.filter(e => !e.suspended_login);
+        filtered = filtered.filter(e => !isEmailSuspended(e));
     } else if (state.filters.status === 'suspended') {
-        filtered = filtered.filter(e => e.suspended_login);
+        filtered = filtered.filter(e => isEmailSuspended(e));
     }
 
     // Filter by search
@@ -841,8 +853,8 @@ function applyFilters() {
                     break;
                 case 'status':
                     // active (0) before suspended (1)
-                    valA = a.suspended_login ? 1 : 0;
-                    valB = b.suspended_login ? 1 : 0;
+                    valA = isEmailSuspended(a) ? 1 : 0;
+                    valB = isEmailSuspended(b) ? 1 : 0;
                     break;
                 case 'usage':
                     valA = parseInt(a.diskused) || 0;

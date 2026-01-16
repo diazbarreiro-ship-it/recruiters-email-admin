@@ -46,6 +46,8 @@ const fetchUrl = (url, options = {}) => {
             rejectUnauthorized: false // Allow self-signed certs for cPanel
         };
 
+        console.log(`[DEBUG] cPanel Request: ${requestOptions.method} https://${requestOptions.hostname}:${requestOptions.port}${requestOptions.path}`);
+
         const req = https.request(requestOptions, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);

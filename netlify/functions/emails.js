@@ -98,8 +98,7 @@ async function createEmail(event) {
         `${getCpanelBaseUrl()}/Email/add_pop?${params.toString()}`,
         {
             headers: getCpanelHeaders(),
-            method: 'POST'
-            // Body removed as we are sending via Query Params
+            method: 'GET' // Force GET to bypass body parsing issues completely
         }
     );
     const data = await response.json();

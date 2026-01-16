@@ -166,6 +166,20 @@ const Tracking = {
         }
     },
 
+    // Get recovery email for an account
+    async getRecoveryEmail(email) {
+        try {
+            const results = await supabase.query('email_accounts', {
+                select: 'recovery_email',
+                filter: `email.eq.${email}`
+            });
+            return results && results.length > 0 ? results[0].recovery_email : null;
+        } catch (error) {
+            console.warn('Failed to fetch recovery email:', error.message);
+            return null;
+        }
+    },
+
     async saveNotificationSettings(settings) {
         try {
             const existing = await this.getNotificationSettings(settings.domain);

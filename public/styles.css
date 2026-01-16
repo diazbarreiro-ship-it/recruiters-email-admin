@@ -1872,3 +1872,76 @@ textarea#welcomeBody {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================
+   Bulk Actions & Sorting Styles
+   ============================================ */
+.bulk-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: rgba(99, 102, 241, 0.1);
+    border-bottom: 1px solid var(--color-border);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.selected-count {
+    font-size: 0.9rem;
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+.checkbox-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+}
+
+input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+}
+
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition-fast);
+}
+
+th.sortable:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+.sort-icon {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 0.8rem;
+    opacity: 0.5;
+}
+
+th.sortable.sorted-asc .sort-icon,
+th.sortable.sorted-desc .sort-icon {
+    opacity: 1;
+    color: var(--color-primary);
+}
+
+.checkbox-cell input {
+    transform: scale(1.1);
+}

@@ -176,20 +176,38 @@
                         <button class="btn btn-ghost btn-sm" id="clearFiltersBtn">✕ Limpiar</button>
                     </div>
 
+                    <!-- Bulk Actions Bar -->
+                    <div class="bulk-actions hidden" id="bulkActions">
+                        <div class="selected-count">
+                            <span id="selectedCount">0</span> seleccionados
+                        </div>
+                        <div class="bulk-buttons">
+                            <button class="btn btn-danger btn-sm" id="bulkDeleteBtn">
+                                🗑️ Eliminar Seleccionados
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="table-container">
                         <table class="data-table" id="emailsTable">
                             <thead>
                                 <tr>
-                                    <th>Correo Electrónico</th>
-                                    <th>Estado</th>
-                                    <th>Uso de Disco</th>
-                                    <th>Cuota</th>
+                                    <th class="checkbox-cell">
+                                        <input type="checkbox" id="selectAllEmails">
+                                    </th>
+                                    <th class="sortable" data-sort="email">Correo Electrónico <span
+                                            class="sort-icon">↕️</span></th>
+                                    <th class="sortable" data-sort="status">Estado <span class="sort-icon">↕️</span>
+                                    </th>
+                                    <th class="sortable" data-sort="usage">Uso de Disco <span
+                                            class="sort-icon">↕️</span></th>
+                                    <th class="sortable" data-sort="quota">Cuota <span class="sort-icon">↕️</span></th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="emailsTableBody">
                                 <tr class="loading-row">
-                                    <td colspan="5">
+                                    <td colspan="6">
                                         <div class="loading-spinner"></div>
                                         <span>Cargando correos...</span>
                                     </td>

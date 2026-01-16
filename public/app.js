@@ -23,7 +23,10 @@ const state = {
     filters: {
         status: 'all',
         search: ''
-    }
+    },
+    selectedEmails: new Set(),
+    sortField: null,
+    sortDirection: 'asc'
 };
 
 // DOM Elements
@@ -109,6 +112,10 @@ const elements = {
     closeDeleteModalBtn: document.getElementById('closeDeleteModalBtn'),
     cancelDelete: document.getElementById('cancelDelete'),
     confirmDelete: document.getElementById('confirmDelete'),
+    bulkActions: document.getElementById('bulkActions'),
+    selectAllEmails: document.getElementById('selectAllEmails'),
+    selectedCount: document.getElementById('selectedCount'),
+    bulkDeleteBtn: document.getElementById('bulkDeleteBtn'),
 
     // User Modal
     userModal: document.getElementById('userModal'),
@@ -355,6 +362,15 @@ const UI = {
             return `
                 <tr data-email="${email.user}" data-domain="${email.domain}">
                     <td>
+                        <div class="checkbox-cell">
+                            <input type="checkbox" class="email-checkbox" 
+                                value="${email.user}" 
+                                data-domain="${email.domain}"
+                                onchange="toggleSelectEmail('${email.user}', this.checked)"
+                                ${state.selectedEmails.has(email.user) ? 'checked' : ''}>
+                        </div>
+                    </td>
+                    <td>
                         <div class="email-cell">
                             <div class="email-avatar">${initials}</div>
                             <div class="email-info">
@@ -380,6 +396,9 @@ const UI = {
                     </td>
                     <td>
                         <div class="actions-cell">
+                            <button class="action-btn" onclick="window.open('https://box2276.bluehost.com:2096/', '_blank')" title="Ver Bandeja de Entrada" style="color: var(--color-info);">
+                                📧
+                            </button>
                             <button class="action-btn" onclick="Actions.changePassword('${email.user}', '${email.domain}')" title="Cambiar contraseña">
                                 🔑
                             </button>
@@ -560,6 +579,45 @@ const Actions = {
             await loadEmails();
         } catch (error) {
             UI.showToast('error', 'Error', error.message);
+        }
+    },
+
+    async deleteSelected() {
+        if (state.selectedEmails.size === 0) return;
+
+        if (!confirm(`¿Estás seguro de que deseas eliminar ${state.selectedEmails.size} cuentas seleccionadas?`)) {
+            return;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+
+        UI.showToast('info', 'Procesando...', 'Eliminando cuentas seleccionadas...');
+
+        const emailsToDelete = Array.from(state.selectedEmails);
+
+        for (const user of emailsToDelete) {
+            try {
+                // Find email object to get domain if needed, but we assume current domain for now or store it
+                // We'll use current domain from state as the table shows emails from current domain
+                await API.deleteEmail(user, state.currentDomain);
+                successCount++;
+            } catch (error) {
+                console.error(`Error deleting ${user}:`, error);
+                failCount++;
+            }
+        }
+
+        state.selectedEmails.clear();
+        updateBulkActions();
+
+        if (successCount > 0) {
+            UI.showToast('success', 'Eliminación Completada', `Se eliminaron ${successCount} cuentas.`);
+            await loadEmails(); // Reload to refresh list
+        }
+
+        if (failCount > 0) {
+            UI.showToast('warning', 'Errores', `Hubo problemas al eliminar ${failCount} cuentas.`);
         }
     }
 };
@@ -769,6 +827,39 @@ function applyFilters() {
             e.email?.toLowerCase().includes(search) ||
             e.user?.toLowerCase().includes(search)
         );
+    }
+
+    // Sort
+    if (state.sortField) {
+        filtered.sort((a, b) => {
+            let valA, valB;
+
+            switch (state.sortField) {
+                case 'email':
+                    valA = a.email.toLowerCase();
+                    valB = b.email.toLowerCase();
+                    break;
+                case 'status':
+                    // active (0) before suspended (1)
+                    valA = a.suspended_login ? 1 : 0;
+                    valB = b.suspended_login ? 1 : 0;
+                    break;
+                case 'usage':
+                    valA = parseInt(a.diskused) || 0;
+                    valB = parseInt(b.diskused) || 0;
+                    break;
+                case 'quota':
+                    valA = parseInt(a.diskquota) || 0;
+                    valB = parseInt(b.diskquota) || 0;
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (valA < valB) return state.sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return state.sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
     }
 
     state.filteredEmails = filtered;
@@ -1004,6 +1095,25 @@ function setupEventListeners() {
             await Tracking.logActivity('password_changed', `${email}@${domain}`, domain);
 
             UI.closeModal(elements.changePasswordModal);
+
+            // Check for recovery email and send notification
+            if (window.Tracking) {
+                const fullEmail = `${email}@${domain}`;
+                // Try to find recovery email in DB
+                const recoveryEmail = await Tracking.getRecoveryEmail(fullEmail);
+
+                if (recoveryEmail) {
+                    UI.showToast('info', 'Notificando...', `Enviando credenciales a ${recoveryEmail}`);
+                    try {
+                        await API.sendNotification(fullEmail, password, domain, recoveryEmail);
+                        UI.showToast('success', 'Notificación Enviada', 'Se han enviado las nuevas credenciales');
+                    } catch (notiError) {
+                        console.error('Error sending notification:', notiError);
+                        UI.showToast('warning', 'Aviso', 'Contraseña cambiada pero falló el envío del correo de notificación');
+                    }
+                }
+            }
+
         } catch (error) {
             UI.showToast('error', 'Error', error.message);
         }
@@ -1546,6 +1656,100 @@ async function init() {
 
 // Start the application
 document.addEventListener('DOMContentLoaded', init);
+
+// ============================================
+// Bulk Actions & Sorting
+// ============================================
+
+window.toggleSelectEmail = function (user, checked) {
+    if (checked) {
+        state.selectedEmails.add(user);
+    } else {
+        state.selectedEmails.delete(user);
+    }
+    updateBulkActions();
+};
+
+function toggleSelectAll(checked) {
+    const visibleEmails = state.filteredEmails.map(e => e.user);
+
+    if (checked) {
+        visibleEmails.forEach(user => state.selectedEmails.add(user));
+    } else {
+        state.selectedEmails.clear();
+    }
+
+    // Update individual checkboxes
+    document.querySelectorAll('.email-checkbox').forEach(cb => {
+        cb.checked = checked;
+    });
+
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const count = state.selectedEmails.size;
+    elements.selectedCount.textContent = count;
+
+    if (count > 0) {
+        elements.bulkActions.classList.remove('hidden');
+    } else {
+        elements.bulkActions.classList.add('hidden');
+    }
+
+    // Update select all checkbox state if needed
+    if (elements.selectAllEmails) {
+        const visibleCount = state.filteredEmails.length;
+        elements.selectAllEmails.checked = visibleCount > 0 && count === visibleCount;
+        elements.selectAllEmails.indeterminate = count > 0 && count < visibleCount;
+    }
+}
+
+// Setup Header Sorting Listeners
+// We need to wait for DOM elements to be ready if they are static, or re-attach if dynamic
+// Since headers are static in HTML, we can attach here or in setupEventListeners
+// But since this script runs at end of body, we can try attaching now or in a function
+function setupSortingAndBulkListeners() {
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const field = th.dataset.sort;
+
+            // Toggle direction if already sorting by this field
+            if (state.sortField === field) {
+                state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.sortField = field;
+                state.sortDirection = 'asc';
+            }
+
+            // Update header UI
+            document.querySelectorAll('th.sortable').forEach(header => {
+                header.classList.remove('sorted-asc', 'sorted-desc');
+                header.querySelector('.sort-icon').textContent = '↕️';
+            });
+
+            th.classList.add(state.sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            th.querySelector('.sort-icon').textContent = state.sortDirection === 'asc' ? '↑' : '↓';
+
+            applyFilters();
+        });
+    });
+
+    if (elements.selectAllEmails) {
+        elements.selectAllEmails.addEventListener('change', (e) => {
+            toggleSelectAll(e.target.checked);
+        });
+    }
+
+    if (elements.bulkDeleteBtn) {
+        elements.bulkDeleteBtn.addEventListener('click', () => {
+            Actions.deleteSelected();
+        });
+    }
+}
+
+// Call setup listeners
+setupSortingAndBulkListeners();
 
 
 

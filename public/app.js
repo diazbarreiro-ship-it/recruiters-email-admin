@@ -1793,100 +1793,96 @@ document.addEventListener('DOMContentLoaded', init);
 // Bulk Actions & Sorting
 // ============================================
 
+// ============================================
+// Bulk Actions & Sorting
+// ============================================
+
 window.toggleSelectEmail = function (user, checked) {
     if (checked) {
         state.selectedEmails.add(user);
     } else {
-        // Helper functions for selection
-        window.toggleSelectEmail = function (user, checked) {
-            if (checked) {
-                state.selectedEmails.add(user);
+        state.selectedEmails.delete(user);
+    }
+    updateBulkActions();
+};
+
+window.toggleSelectAll = function (checked) {
+    const visibleEmails = state.filteredEmails.map(e => e.user);
+
+    if (checked) {
+        visibleEmails.forEach(user => state.selectedEmails.add(user));
+    } else {
+        state.selectedEmails.clear();
+    }
+
+    // Update individual checkboxes
+    document.querySelectorAll('.email-checkbox').forEach(cb => {
+        cb.checked = checked;
+    });
+
+    updateBulkActions();
+};
+
+function updateBulkActions() {
+    const count = state.selectedEmails.size;
+    elements.selectedCount.textContent = count;
+
+    if (count > 0) {
+        elements.bulkActions.classList.remove('hidden');
+    } else {
+        elements.bulkActions.classList.add('hidden');
+    }
+
+    // Update select all checkbox state if needed
+    if (elements.selectAllEmails) {
+        const visibleCount = state.filteredEmails.length;
+        elements.selectAllEmails.checked = visibleCount > 0 && count === visibleCount;
+        elements.selectAllEmails.indeterminate = count > 0 && count < visibleCount;
+    }
+}
+
+// Setup Header Sorting Listeners
+function setupSortingAndBulkListeners() {
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const field = th.dataset.sort;
+
+            // Toggle direction if already sorting by this field
+            if (state.sortField === field) {
+                state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
             } else {
-                state.selectedEmails.delete(user);
-            }
-            updateBulkActions();
-        };
-
-        window.toggleSelectAll = function (checked) {
-            const visibleEmails = state.filteredEmails.map(e => e.user);
-
-            if (checked) {
-                visibleEmails.forEach(user => state.selectedEmails.add(user));
-            } else {
-                state.selectedEmails.clear();
+                state.sortField = field;
+                state.sortDirection = 'asc';
             }
 
-            // Update individual checkboxes
-            document.querySelectorAll('.email-checkbox').forEach(cb => {
-                cb.checked = checked;
+            // Update header UI
+            document.querySelectorAll('th.sortable').forEach(header => {
+                header.classList.remove('sorted-asc', 'sorted-desc');
+                header.querySelector('.sort-icon').textContent = '↕️';
             });
 
-            updateBulkActions();
-        };
+            th.classList.add(state.sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            th.querySelector('.sort-icon').textContent = state.sortDirection === 'asc' ? '↑' : '↓';
 
-        function updateBulkActions() {
-            const count = state.selectedEmails.size;
-            elements.selectedCount.textContent = count;
+            applyFilters();
+        });
+    });
 
-            if (count > 0) {
-                elements.bulkActions.classList.remove('hidden');
-            } else {
-                elements.bulkActions.classList.add('hidden');
-            }
+    if (elements.selectAllEmails) {
+        elements.selectAllEmails.addEventListener('change', (e) => {
+            toggleSelectAll(e.target.checked);
+        });
+    }
 
-            // Update select all checkbox state if needed
-            if (elements.selectAllEmails) {
-                const visibleCount = state.filteredEmails.length;
-                elements.selectAllEmails.checked = visibleCount > 0 && count === visibleCount;
-                elements.selectAllEmails.indeterminate = count > 0 && count < visibleCount;
-            }
-        }
+    if (elements.bulkDeleteBtn) {
+        elements.bulkDeleteBtn.addEventListener('click', () => {
+            Actions.deleteSelected();
+        });
+    }
+}
 
-        // Setup Header Sorting Listeners
-        // We need to wait for DOM elements to be ready if they are static, or re-attach if dynamic
-        // Since headers are static in HTML, we can attach here or in setupEventListeners
-        // But since this script runs at end of body, we can try attaching now or in a function
-        function setupSortingAndBulkListeners() {
-            document.querySelectorAll('th.sortable').forEach(th => {
-                th.addEventListener('click', () => {
-                    const field = th.dataset.sort;
-
-                    // Toggle direction if already sorting by this field
-                    if (state.sortField === field) {
-                        state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        state.sortField = field;
-                        state.sortDirection = 'asc';
-                    }
-
-                    // Update header UI
-                    document.querySelectorAll('th.sortable').forEach(header => {
-                        header.classList.remove('sorted-asc', 'sorted-desc');
-                        header.querySelector('.sort-icon').textContent = '↕️';
-                    });
-
-                    th.classList.add(state.sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
-                    th.querySelector('.sort-icon').textContent = state.sortDirection === 'asc' ? '↑' : '↓';
-
-                    applyFilters();
-                });
-            });
-
-            if (elements.selectAllEmails) {
-                elements.selectAllEmails.addEventListener('change', (e) => {
-                    toggleSelectAll(e.target.checked);
-                });
-            }
-
-            if (elements.bulkDeleteBtn) {
-                elements.bulkDeleteBtn.addEventListener('click', () => {
-                    Actions.deleteSelected();
-                });
-            }
-        }
-
-        // Call setup listeners
-        setupSortingAndBulkListeners();
+// Call setup listeners
+setupSortingAndBulkListeners();
 
 
 

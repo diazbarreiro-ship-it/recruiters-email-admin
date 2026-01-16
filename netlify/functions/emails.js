@@ -130,25 +130,30 @@ async function deleteEmail(event, segments) {
         return jsonResponse(400, { success: false, error: 'Email and domain are required' });
     }
 
-    const bodyParams = JSON.stringify({
-        email: `${email}@${domain}`,
-        domain: domain
-    });
+    const cpanelUrl = `${getCpanelBaseUrl()}/Email/delete_pop`;
+    const requestBody = { email, domain };
 
-    const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/delete_pop`,
-        {
-            headers: getCpanelHeaders(),
+    console.log('[DEBUG DELETE] URL:', cpanelUrl);
+    console.log('[DEBUG DELETE] Body:', JSON.stringify(requestBody));
+
+    try {
+        const response = await fetch(cpanelUrl, {
             method: 'POST',
-            body: bodyParams
-        }
-    );
-    const data = await response.json();
+            headers: getCpanelHeaders(),
+            body: JSON.stringify(requestBody)
+        });
 
-    if (data.status === 1) {
-        return jsonResponse(200, { success: true, message: `Email account ${email}@${domain} deleted successfully` });
-    } else {
-        return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to delete email account' });
+        const data = await response.json();
+        console.log('[DEBUG DELETE] Response:', JSON.stringify(data));
+
+        if (data.status === 1) {
+            return jsonResponse(200, { success: true, message: `Email account ${email}@${domain} deleted successfully` });
+        } else {
+            return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to delete email account' });
+        }
+    } catch (error) {
+        console.error('[DEBUG DELETE] Error:', error);
+        return jsonResponse(500, { success: false, error: error.message });
     }
 }
 
@@ -177,26 +182,27 @@ async function changePassword(email, body) {
         return jsonResponse(400, { success: false, error: 'Password and domain are required' });
     }
 
-    const bodyParams = JSON.stringify({
-        email: `${email}@${domain}`,
-        password: password,
-        domain: domain
-    });
+    const cpanelUrl = `${getCpanelBaseUrl()}/Email/passwd_pop`;
+    const requestBody = { email, password, domain };
 
-    const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/passwd_pop`,
-        {
-            headers: getCpanelHeaders(),
+    console.log('[DEBUG PASSWORD] URL:', cpanelUrl);
+    console.log('[DEBUG PASSWORD] Body:', JSON.stringify(requestBody));
+
+    try {
+        const response = await fetch(cpanelUrl, {
             method: 'POST',
-            body: bodyParams
-        }
-    );
-    const data = await response.json();
+            headers: getCpanelHeaders(),
+            body: JSON.stringify(requestBody)
+        });
+        const data = await response.json();
 
-    if (data.status === 1) {
-        return jsonResponse(200, { success: true, message: `Password changed for ${email}@${domain}` });
-    } else {
-        return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to change password' });
+        if (data.status === 1) {
+            return jsonResponse(200, { success: true, message: `Password changed for ${email}@${domain}` });
+        } else {
+            return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to change password' });
+        }
+    } catch (error) {
+        return jsonResponse(500, { success: false, error: error.message });
     }
 }
 
@@ -208,22 +214,28 @@ async function toggleSuspend(email, body) {
     }
 
     const endpoint = suspend ? 'suspend_login' : 'unsuspend_login';
-    const bodyParams = JSON.stringify({ email: `${email}@${domain}` });
+    const cpanelUrl = `${getCpanelBaseUrl()}/Email/${endpoint}`;
+    // suspend/unsuspend requires 'email' parameter to be the full email address user@domain
+    const requestBody = { email: `${email}@${domain}` };
 
-    const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/${endpoint}`,
-        {
-            headers: getCpanelHeaders(),
+    console.log(`[DEBUG SUSPEND] URL: ${cpanelUrl}`);
+    console.log(`[DEBUG SUSPEND] Body: ${JSON.stringify(requestBody)}`);
+
+    try {
+        const response = await fetch(cpanelUrl, {
             method: 'POST',
-            body: bodyParams
-        }
-    );
-    const data = await response.json();
+            headers: getCpanelHeaders(),
+            body: JSON.stringify(requestBody)
+        });
+        const data = await response.json();
 
-    if (data.status === 1) {
-        return jsonResponse(200, { success: true, message: `Email ${email}@${domain} ${suspend ? 'suspended' : 'unsuspended'} successfully` });
-    } else {
-        return jsonResponse(200, { success: false, error: data.errors?.[0] || `Failed to ${suspend ? 'suspend' : 'unsuspend'} email` });
+        if (data.status === 1) {
+            return jsonResponse(200, { success: true, message: `Email ${email}@${domain} ${suspend ? 'suspended' : 'unsuspended'} successfully` });
+        } else {
+            return jsonResponse(200, { success: false, error: data.errors?.[0] || `Failed to ${suspend ? 'suspend' : 'unsuspend'} email` });
+        }
+    } catch (error) {
+        return jsonResponse(500, { success: false, error: error.message });
     }
 }
 
@@ -234,25 +246,31 @@ async function changeQuota(email, body) {
         return jsonResponse(400, { success: false, error: 'Quota and domain are required' });
     }
 
-    const bodyParams = JSON.stringify({
-        email: `${email}@${domain}`,
+    const cpanelUrl = `${getCpanelBaseUrl()}/Email/edit_pop_quota`;
+    const requestBody = {
+        email,
         quota: quota.toString(),
-        domain: domain
-    });
+        domain
+    };
 
-    const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/edit_pop_quota`,
-        {
-            headers: getCpanelHeaders(),
+    console.log('[DEBUG QUOTA] URL:', cpanelUrl);
+    console.log('[DEBUG QUOTA] Body:', JSON.stringify(requestBody));
+
+    try {
+        const response = await fetch(cpanelUrl, {
             method: 'POST',
-            body: bodyParams
-        }
-    );
-    const data = await response.json();
+            headers: getCpanelHeaders(),
+            body: JSON.stringify(requestBody)
+        });
+        const data = await response.json();
 
-    if (data.status === 1) {
-        return jsonResponse(200, { success: true, message: `Quota updated for ${email}@${domain}` });
-    } else {
-        return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to update quota' });
+        if (data.status === 1) {
+            return jsonResponse(200, { success: true, message: `Quota updated for ${email}@${domain}` });
+        } else {
+            return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to update quota' });
+        }
+    } catch (error) {
+        return jsonResponse(500, { success: false, error: error.message });
     }
 }
+

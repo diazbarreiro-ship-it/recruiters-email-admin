@@ -10,10 +10,15 @@ const getCpanelBaseUrl = () => {
     return `https://${CPANEL_HOST}:${CPANEL_PORT}/execute`;
 };
 
-const getCpanelHeaders = () => ({
-    'Authorization': `cpanel ${CPANEL_USERNAME}:${CPANEL_API_TOKEN}`,
-    'Content-Type': 'application/json'
-});
+const getCpanelHeaders = () => {
+    if (!CPANEL_API_TOKEN) {
+        console.error('CRITICAL: CPANEL_API_TOKEN is missing in environment variables');
+    }
+    return {
+        'Authorization': `cpanel ${CPANEL_USERNAME}:${CPANEL_API_TOKEN}`,
+        'Content-Type': 'application/json'
+    };
+};
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',

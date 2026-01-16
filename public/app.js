@@ -256,6 +256,17 @@ const API = {
         const data = await response.json();
         if (!data.success) throw new Error(data.error);
         return data;
+    },
+
+    async testSmtp(smtpConfig) {
+        const response = await fetch(`${this.baseUrl}/test-smtp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(smtpConfig)
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+        return data;
     }
 };
 
@@ -893,6 +904,66 @@ async function loadTracking() {
 }
 
 // ============================================
+// Settings Functions
+// ============================================
+async function loadNotificationSettings() {
+    if (!state.currentDomain) return;
+
+    try {
+        const settings = await Tracking.getNotificationSettings(state.currentDomain);
+
+        if (settings) {
+            elements.welcomeSubject.value = settings.welcome_subject || '';
+            elements.welcomeBody.value = settings.welcome_body || '';
+            elements.smtpHost.value = settings.smtp_host || '';
+            elements.smtpPort.value = settings.smtp_port || '';
+            elements.smtpUser.value = settings.smtp_user || '';
+            elements.smtpPass.value = settings.smtp_pass || '';
+            elements.fromName.value = settings.from_name || '';
+            elements.fromEmail.value = settings.from_email || '';
+        } else {
+            // Clear form if no settings
+            elements.welcomeSubject.value = '';
+            elements.welcomeBody.value = '';
+            elements.smtpHost.value = '';
+            elements.smtpPort.value = '';
+            elements.smtpUser.value = '';
+            elements.smtpPass.value = '';
+            elements.fromName.value = '';
+            elements.fromEmail.value = '';
+        }
+    } catch (error) {
+        console.error('Error loading notification settings:', error);
+    }
+}
+
+async function saveNotificationSettings() {
+    if (!state.currentDomain) {
+        UI.showToast('error', 'Error', 'No hay un dominio seleccionado');
+        return;
+    }
+
+    const settings = {
+        domain: state.currentDomain,
+        welcome_subject: elements.welcomeSubject.value.trim(),
+        welcome_body: elements.welcomeBody.value.trim(),
+        smtp_host: elements.smtpHost.value.trim(),
+        smtp_port: parseInt(elements.smtpPort.value) || 587,
+        smtp_user: elements.smtpUser.value.trim(),
+        smtp_pass: elements.smtpPass.value,
+        from_name: elements.fromName.value.trim(),
+        from_email: elements.fromEmail.value.trim()
+    };
+
+    try {
+        await Tracking.saveNotificationSettings(settings);
+        UI.showToast('success', 'Guardado', 'Configuración guardada correctamente');
+    } catch (error) {
+        UI.showToast('error', 'Error', 'No se pudo guardar la configuración: ' + error.message);
+    }
+}
+
+// ============================================
 // Event Listeners
 // ============================================
 function setupEventListeners() {
@@ -1201,6 +1272,54 @@ function setupEventListeners() {
                 }).catch(() => {
                     UI.showToast('error', 'Error', 'No se pudo copiar la contraseña');
                 });
+            }
+        });
+    }
+
+    // Test SMTP Button
+    const testSmtpBtn = document.getElementById('testSmtpBtn');
+    const testEmailAddress = document.getElementById('testEmailAddress');
+
+    if (testSmtpBtn) {
+        testSmtpBtn.addEventListener('click', async () => {
+            const smtpHost = elements.smtpHost.value.trim();
+            const smtpPort = elements.smtpPort.value || '587';
+            const smtpUser = elements.smtpUser.value.trim();
+            const smtpPass = elements.smtpPass.value;
+            const fromName = elements.fromName.value.trim();
+            const fromEmail = elements.fromEmail.value.trim();
+            const testEmail = testEmailAddress ? testEmailAddress.value.trim() : '';
+
+            if (!smtpHost || !smtpUser || !smtpPass) {
+                UI.showToast('warning', 'Configuración Incompleta', 'Por favor completa Servidor SMTP, Usuario y Contraseña');
+                return;
+            }
+
+            if (!testEmail) {
+                UI.showToast('warning', 'Email de Prueba Requerido', 'Por favor ingresa un email donde enviar la prueba');
+                return;
+            }
+
+            testSmtpBtn.disabled = true;
+            testSmtpBtn.innerHTML = '⏳ Probando...';
+
+            try {
+                await API.testSmtp({
+                    smtp_host: smtpHost,
+                    smtp_port: smtpPort,
+                    smtp_user: smtpUser,
+                    smtp_pass: smtpPass,
+                    from_name: fromName,
+                    from_email: fromEmail,
+                    test_email: testEmail
+                });
+
+                UI.showToast('success', '¡SMTP Funcionando!', `Correo de prueba enviado a ${testEmail}. Revisa tu bandeja de entrada.`);
+            } catch (error) {
+                UI.showToast('error', 'Error de SMTP', error.message);
+            } finally {
+                testSmtpBtn.disabled = false;
+                testSmtpBtn.innerHTML = '🧪 Probar SMTP';
             }
         });
     }

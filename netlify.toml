@@ -28,6 +28,16 @@
   to = "/.netlify/functions/forwarders"
   status = 200
 
+[[redirects]]
+  from = "/api/notifications"
+  to = "/.netlify/functions/notifications"
+  status = 200
+
+[[redirects]]
+  from = "/api/test-smtp"
+  to = "/.netlify/functions/test-smtp"
+  status = 200
+
 # SPA fallback - must be last
 [[redirects]]
   from = "/*"

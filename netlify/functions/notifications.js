@@ -25,7 +25,10 @@ exports.handler = async (event) => {
         }
 
         // 1. Fetch settings from Supabase
-        const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+        const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFldGd6ZHh2eGJ6dXl6ZWpicGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MTkzNTQsImV4cCI6MjA4Mzk5NTM1NH0.eAmDOBkmjqBvE08bHE4Ykq0noNLiFO71zscHD83HzB8';
+
+        console.log('[DEBUG] Supabase key present:', !!supabaseKey);
+        console.log('[DEBUG] Fetching settings for domain:', domain);
         const settingsResponse = await fetchUrl(
             `${SUPABASE_URL}/rest/v1/notification_settings?domain=eq.${domain}&select=*`,
             {

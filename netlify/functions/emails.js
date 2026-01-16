@@ -85,29 +85,39 @@ async function createEmail(event) {
         return jsonResponse(400, { success: false, error: 'Email, password, and domain are required' });
     }
 
-    // Use URL query parameters instead of JSON body
-    // Some cPanel versions struggle with JSON body in add_pop
-    const params = new URLSearchParams({
-        email: `${email}@${domain}`,
+    // Build request exactly like server.js does (which works)
+    const cpanelUrl = `${getCpanelBaseUrl()}/Email/add_pop`;
+    const requestBody = {
+        email: email,  // Just username, not full address
         password: password,
         quota: quota.toString(),
         domain: domain
-    });
+    };
 
-    const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/add_pop?${params.toString()}`,
-        {
+    console.log('[DEBUG] cPanel URL:', cpanelUrl);
+    console.log('[DEBUG] Request body:', JSON.stringify(requestBody));
+    console.log('[DEBUG] Headers:', JSON.stringify(getCpanelHeaders()));
+
+    try {
+        // Use native fetch (Node 18+) instead of custom fetchUrl
+        const response = await fetch(cpanelUrl, {
+            method: 'POST',
             headers: getCpanelHeaders(),
-            method: 'GET' // Force GET to bypass body parsing issues completely
-        }
-    );
-    const data = await response.json();
+            body: JSON.stringify(requestBody)
+        });
 
-    if (data.status === 1) {
-        return jsonResponse(200, { success: true, message: `Email account ${email}@${domain} created successfully` });
-    } else {
-        console.error('cPanel error:', data.errors);
-        return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to create email account' });
+        const data = await response.json();
+        console.log('[DEBUG] cPanel response:', JSON.stringify(data));
+
+        if (data.status === 1) {
+            return jsonResponse(200, { success: true, message: `Email account ${email}@${domain} created successfully` });
+        } else {
+            console.error('cPanel error:', data.errors);
+            return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to create email account' });
+        }
+    } catch (fetchError) {
+        console.error('[DEBUG] Fetch error:', fetchError.message);
+        return jsonResponse(500, { success: false, error: `Connection error: ${fetchError.message}` });
     }
 }
 

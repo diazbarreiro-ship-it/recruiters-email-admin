@@ -121,15 +121,22 @@ async function createEmail(event) {
     }
 }
 
+// Helper to extract username if full email is provided
+const getUsername = (email) => {
+    if (!email) return '';
+    return email.split('@')[0];
+};
+
 // DELETE /api/emails/:email
 async function deleteEmail(event, segments) {
-    const email = segments[0];
+    const rawEmail = segments[0];
     const domain = event.queryStringParameters?.domain;
 
-    if (!email || !domain) {
+    if (!rawEmail || !domain) {
         return jsonResponse(400, { success: false, error: 'Email and domain are required' });
     }
 
+    const email = getUsername(rawEmail);
     const cpanelUrl = `${getCpanelBaseUrl()}/Email/delete_pop`;
     const requestBody = { email, domain };
 
@@ -175,13 +182,14 @@ async function handlePut(event, segments) {
     }
 }
 
-async function changePassword(email, body) {
+async function changePassword(rawEmail, body) {
     const { password, domain } = body;
 
     if (!password || !domain) {
         return jsonResponse(400, { success: false, error: 'Password and domain are required' });
     }
 
+    const email = getUsername(rawEmail);
     const cpanelUrl = `${getCpanelBaseUrl()}/Email/passwd_pop`;
     const requestBody = { email, password, domain };
 
@@ -206,17 +214,21 @@ async function changePassword(email, body) {
     }
 }
 
-async function toggleSuspend(email, body) {
+async function toggleSuspend(rawEmail, body) {
     const { suspend, domain } = body;
 
     if (suspend === undefined || !domain) {
         return jsonResponse(400, { success: false, error: 'Suspend flag and domain are required' });
     }
 
+    // suspend_login / unsuspend_login require full email address mostly
+    const email = getUsername(rawEmail);
+    const fullEmail = `${email}@${domain}`;
+
     const endpoint = suspend ? 'suspend_login' : 'unsuspend_login';
     const cpanelUrl = `${getCpanelBaseUrl()}/Email/${endpoint}`;
-    // suspend/unsuspend requires 'email' parameter to be the full email address user@domain
-    const requestBody = { email: `${email}@${domain}` };
+
+    const requestBody = { email: fullEmail };
 
     console.log(`[DEBUG SUSPEND] URL: ${cpanelUrl}`);
     console.log(`[DEBUG SUSPEND] Body: ${JSON.stringify(requestBody)}`);
@@ -230,7 +242,7 @@ async function toggleSuspend(email, body) {
         const data = await response.json();
 
         if (data.status === 1) {
-            return jsonResponse(200, { success: true, message: `Email ${email}@${domain} ${suspend ? 'suspended' : 'unsuspended'} successfully` });
+            return jsonResponse(200, { success: true, message: `Email ${fullEmail} ${suspend ? 'suspended' : 'unsuspended'} successfully` });
         } else {
             return jsonResponse(200, { success: false, error: data.errors?.[0] || `Failed to ${suspend ? 'suspend' : 'unsuspend'} email` });
         }
@@ -239,13 +251,14 @@ async function toggleSuspend(email, body) {
     }
 }
 
-async function changeQuota(email, body) {
+async function changeQuota(rawEmail, body) {
     const { quota, domain } = body;
 
     if (quota === undefined || !domain) {
         return jsonResponse(400, { success: false, error: 'Quota and domain are required' });
     }
 
+    const email = getUsername(rawEmail);
     const cpanelUrl = `${getCpanelBaseUrl()}/Email/edit_pop_quota`;
     const requestBody = {
         email,

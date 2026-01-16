@@ -63,7 +63,15 @@ async function getEmails(event) {
 // POST /api/emails
 async function createEmail(event) {
     console.log('[DEBUG] Raw event body:', event.body);
-    const body = JSON.parse(event.body || '{}');
+    console.log('[DEBUG] isBase64Encoded:', event.isBase64Encoded);
+
+    let bodyStr = event.body;
+    if (event.isBase64Encoded) {
+        bodyStr = Buffer.from(event.body, 'base64').toString('utf8');
+        console.log('[DEBUG] Decoded body:', bodyStr);
+    }
+
+    const body = JSON.parse(bodyStr || '{}');
     console.log('[DEBUG] Parsed body:', body);
     const { email, password, quota = 1024, domain } = body;
 

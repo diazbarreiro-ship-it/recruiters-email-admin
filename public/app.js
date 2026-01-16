@@ -1012,8 +1012,9 @@ function setupEventListeners() {
         }
 
         try {
-            const domain = state.currentDomain;
-            console.log(`Submitting email creation: ${email}@${domain}`);
+            // Force domain from selector to ensure accuracy
+            const domain = elements.domainSelect.value || state.currentDomain;
+            console.log(`[APP] Creating email: user='${email}', domain='${domain}'`);
 
             if (!domain) {
                 UI.showToast('error', 'Error', 'No hay un dominio seleccionado');

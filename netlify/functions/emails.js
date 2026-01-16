@@ -85,20 +85,21 @@ async function createEmail(event) {
         return jsonResponse(400, { success: false, error: 'Email, password, and domain are required' });
     }
 
-    const bodyParams = JSON.stringify({
+    // Use URL query parameters instead of JSON body
+    // Some cPanel versions struggle with JSON body in add_pop
+    const params = new URLSearchParams({
         email: `${email}@${domain}`,
         password: password,
         quota: quota.toString(),
         domain: domain
     });
 
-    // Use POST for creation with JSON body
     const response = await fetchUrl(
-        `${getCpanelBaseUrl()}/Email/add_pop`,
+        `${getCpanelBaseUrl()}/Email/add_pop?${params.toString()}`,
         {
             headers: getCpanelHeaders(),
-            method: 'POST',
-            body: bodyParams
+            method: 'POST'
+            // Body removed as we are sending via Query Params
         }
     );
     const data = await response.json();

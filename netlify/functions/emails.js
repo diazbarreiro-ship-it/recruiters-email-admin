@@ -62,10 +62,16 @@ async function getEmails(event) {
 
 // POST /api/emails
 async function createEmail(event) {
+    console.log('[DEBUG] Raw event body:', event.body);
     const body = JSON.parse(event.body || '{}');
+    console.log('[DEBUG] Parsed body:', body);
     const { email, password, quota = 1024, domain } = body;
 
-    console.log(`Creating email: ${email}@${domain} with quota ${quota}`);
+    console.log(`[DEBUG] Attempting to create email: '${email}' @ '${domain}' with quota ${quota}`);
+
+    // Explicit check to see what values are missing
+    if (!email) console.error('[DEBUG] ERROR: Email field is missing or empty');
+    if (!domain) console.error('[DEBUG] ERROR: Domain field is missing or empty');
 
     if (!email || !password || !domain) {
         return jsonResponse(400, { success: false, error: 'Email, password, and domain are required' });

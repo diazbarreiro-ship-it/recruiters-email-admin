@@ -137,17 +137,21 @@ async function deleteEmail(event, segments) {
     }
 
     const email = getUsername(rawEmail);
-    const cpanelUrl = `${getCpanelBaseUrl()}/Email/delete_pop`;
-    const requestBody = { email, domain };
+
+    // Build URL with query parameters (cPanel UAPI often expects this format)
+    const params = new URLSearchParams({
+        email: email,
+        domain: domain
+    });
+    const cpanelUrl = `${getCpanelBaseUrl()}/Email/delete_pop?${params.toString()}`;
 
     console.log('[DEBUG DELETE] URL:', cpanelUrl);
-    console.log('[DEBUG DELETE] Body:', JSON.stringify(requestBody));
+    console.log('[DEBUG DELETE] email param:', email, '| domain param:', domain);
 
     try {
         const response = await fetch(cpanelUrl, {
             method: 'POST',
-            headers: getCpanelHeaders(),
-            body: JSON.stringify(requestBody)
+            headers: getCpanelHeaders()
         });
 
         const data = await response.json();

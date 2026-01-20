@@ -594,6 +594,7 @@ const Actions = {
     },
 
     async deleteSelected() {
+        console.log('[BULK DELETE] Button clicked. Selected count:', state.selectedEmails.size);
         if (state.selectedEmails.size === 0) {
             UI.showToast('warning', 'Sin selección', 'No hay correos seleccionados para eliminar');
             return;

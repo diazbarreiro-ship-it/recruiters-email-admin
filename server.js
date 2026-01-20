@@ -32,6 +32,12 @@ const getCpanelHeaders = () => ({
   'Content-Type': 'application/json'
 });
 
+// Helper to extract username if full email is provided
+const getUsername = (email) => {
+  if (!email) return '';
+  return email.split('@')[0];
+};
+
 // ============================================
 // API ENDPOINTS
 // ============================================
@@ -102,50 +108,34 @@ app.get('/api/emails', async (req, res) => {
 // Create new email account
 app.post('/api/emails', async (req, res) => {
   try {
-    const { email, password, quota = 1024, domain } = req.body;
+    const { email: rawEmail, password, quota = 1024, domain } = req.body;
+    const email = getUsername(rawEmail);
 
-    console.log(`[API] Creating email account: ${email}@${domain} (Quota: ${quota}MB)`);
+    console.log(`[API] Creating email: ${email}@${domain}`);
 
     if (!email || !password || !domain) {
-      return res.status(400).json({
-        success: false,
-        error: 'Email, password, and domain are required'
-      });
+      return res.status(400).json({ success: false, error: 'Email, password, and domain are required' });
     }
 
-    // Parameters for cPanel UAPI Email::add_pop
-    const bodyParams = {
-      email: `${email}@${domain}`,
-      password: password,
+    // Use query params for more reliable cPanel UAPI calls
+    const params = new URLSearchParams({
+      email,
+      password,
       quota: quota.toString(),
-      domain: domain
-    };
+      domain
+    });
 
-    // Use POST for state-changing operations in cPanel UAPI
     const response = await fetch(
-      `${getCpanelBaseUrl()}/Email/add_pop`,
-      {
-        headers: getCpanelHeaders(),
-        method: 'POST',
-        body: JSON.stringify(bodyParams)
-      }
+      `${getCpanelBaseUrl()}/Email/add_pop?${params.toString()}`,
+      { headers: getCpanelHeaders(), method: 'POST' }
     );
 
     const data = await response.json();
 
     if (data.status === 1) {
-      console.log(`[API] Success: ${email}@${domain} created`);
-      res.json({
-        success: true,
-        message: `Email account ${email}@${domain} created successfully`
-      });
+      res.json({ success: true, message: `Email account ${email}@${domain} created successfully` });
     } else {
-      const errorMessage = data.errors?.[0] || 'Failed to create email account';
-      console.error(`[API] cPanel Error: ${errorMessage}`, data);
-      res.json({
-        success: false,
-        error: errorMessage
-      });
+      res.json({ success: false, error: data.errors?.[0] || 'Failed to create email account' });
     }
   } catch (error) {
     console.error('Error creating email:', error);
@@ -156,38 +146,28 @@ app.post('/api/emails', async (req, res) => {
 // Delete email account
 app.delete('/api/emails/:email', async (req, res) => {
   try {
-    const { email } = req.params;
+    const rawEmail = req.params.email;
     const { domain } = req.query;
 
     if (!domain) {
       return res.status(400).json({ success: false, error: 'Domain is required' });
     }
 
-    const bodyParams = {
-      email: `${email}@${domain}`,
-      domain: domain
-    };
+    const email = getUsername(rawEmail);
+    const params = new URLSearchParams({ email, domain });
+
+    console.log(`[API] Deleting email: ${email}@${domain}`);
 
     const response = await fetch(
-      `${getCpanelBaseUrl()}/Email/delete_pop`,
-      {
-        headers: getCpanelHeaders(),
-        method: 'POST',
-        body: JSON.stringify(bodyParams)
-      }
+      `${getCpanelBaseUrl()}/Email/delete_pop?${params.toString()}`,
+      { headers: getCpanelHeaders(), method: 'POST' }
     );
     const data = await response.json();
 
     if (data.status === 1) {
-      res.json({
-        success: true,
-        message: `Email account ${email}@${domain} deleted successfully`
-      });
+      res.json({ success: true, message: `Email account ${email}@${domain} deleted successfully` });
     } else {
-      res.json({
-        success: false,
-        error: data.errors?.[0] || 'Failed to delete email account'
-      });
+      res.json({ success: false, error: data.errors?.[0] || 'Failed to delete email account' });
     }
   } catch (error) {
     console.error('Error deleting email:', error);
@@ -198,8 +178,9 @@ app.delete('/api/emails/:email', async (req, res) => {
 // Change email password
 app.put('/api/emails/:email/password', async (req, res) => {
   try {
-    const { email } = req.params;
+    const rawEmail = req.params.email;
     const { password, domain } = req.body;
+    const email = getUsername(rawEmail);
 
     if (!password || !domain) {
       return res.status(400).json({
@@ -208,32 +189,18 @@ app.put('/api/emails/:email/password', async (req, res) => {
       });
     }
 
-    const bodyParams = {
-      email: `${email}@${domain}`,
-      password: password,
-      domain: domain
-    };
+    const params = new URLSearchParams({ email, password, domain });
 
     const response = await fetch(
-      `${getCpanelBaseUrl()}/Email/passwd_pop`,
-      {
-        headers: getCpanelHeaders(),
-        method: 'POST',
-        body: JSON.stringify(bodyParams)
-      }
+      `${getCpanelBaseUrl()}/Email/passwd_pop?${params.toString()}`,
+      { headers: getCpanelHeaders(), method: 'POST' }
     );
     const data = await response.json();
 
     if (data.status === 1) {
-      res.json({
-        success: true,
-        message: `Password changed for ${email}@${domain}`
-      });
+      res.json({ success: true, message: `Password changed for ${email}@${domain}` });
     } else {
-      res.json({
-        success: false,
-        error: data.errors?.[0] || 'Failed to change password'
-      });
+      res.json({ success: false, error: data.errors?.[0] || 'Failed to change password' });
     }
   } catch (error) {
     console.error('Error changing password:', error);
@@ -244,8 +211,9 @@ app.put('/api/emails/:email/password', async (req, res) => {
 // Change email quota
 app.put('/api/emails/:email/quota', async (req, res) => {
   try {
-    const { email } = req.params;
+    const rawEmail = req.params.email;
     const { quota, domain } = req.body;
+    const email = getUsername(rawEmail);
 
     if (quota === undefined || !domain) {
       return res.status(400).json({
@@ -254,32 +222,18 @@ app.put('/api/emails/:email/quota', async (req, res) => {
       });
     }
 
-    const bodyParams = {
-      email: `${email}@${domain}`,
-      quota: quota.toString(),
-      domain: domain
-    };
+    const params = new URLSearchParams({ email, quota: quota.toString(), domain });
 
     const response = await fetch(
-      `${getCpanelBaseUrl()}/Email/edit_pop_quota`,
-      {
-        headers: getCpanelHeaders(),
-        method: 'POST',
-        body: JSON.stringify(bodyParams)
-      }
+      `${getCpanelBaseUrl()}/Email/edit_pop_quota?${params.toString()}`,
+      { headers: getCpanelHeaders(), method: 'POST' }
     );
     const data = await response.json();
 
     if (data.status === 1) {
-      res.json({
-        success: true,
-        message: `Quota updated for ${email}@${domain}`
-      });
+      res.json({ success: true, message: `Quota updated for ${email}@${domain}` });
     } else {
-      res.json({
-        success: false,
-        error: data.errors?.[0] || 'Failed to update quota'
-      });
+      res.json({ success: false, error: data.errors?.[0] || 'Failed to update quota' });
     }
   } catch (error) {
     console.error('Error updating quota:', error);
@@ -290,8 +244,10 @@ app.put('/api/emails/:email/quota', async (req, res) => {
 // Suspend/Unsuspend email
 app.put('/api/emails/:email/suspend', async (req, res) => {
   try {
-    const { email } = req.params;
+    const rawEmail = req.params.email;
     const { suspend, domain } = req.body;
+    const email = getUsername(rawEmail);
+    const fullEmail = `${email}@${domain}`;
 
     if (suspend === undefined || !domain) {
       return res.status(400).json({
@@ -301,30 +257,18 @@ app.put('/api/emails/:email/suspend', async (req, res) => {
     }
 
     const endpoint = suspend ? 'suspend_login' : 'unsuspend_login';
-    const bodyParams = {
-      email: `${email}@${domain}`
-    };
+    const params = new URLSearchParams({ email: fullEmail });
 
     const response = await fetch(
-      `${getCpanelBaseUrl()}/Email/${endpoint}`,
-      {
-        headers: getCpanelHeaders(),
-        method: 'POST',
-        body: JSON.stringify(bodyParams)
-      }
+      `${getCpanelBaseUrl()}/Email/${endpoint}?${params.toString()}`,
+      { headers: getCpanelHeaders(), method: 'POST' }
     );
     const data = await response.json();
 
     if (data.status === 1) {
-      res.json({
-        success: true,
-        message: `Email ${email}@${domain} ${suspend ? 'suspended' : 'unsuspended'} successfully`
-      });
+      res.json({ success: true, message: `Email ${fullEmail} ${suspend ? 'suspended' : 'unsuspended'} successfully` });
     } else {
-      res.json({
-        success: false,
-        error: data.errors?.[0] || `Failed to ${suspend ? 'suspend' : 'unsuspend'} email`
-      });
+      res.json({ success: false, error: data.errors?.[0] || `Failed to ${suspend ? 'suspend' : 'unsuspend'} email` });
     }
   } catch (error) {
     console.error('Error suspending email:', error);
@@ -359,29 +303,21 @@ app.get('/api/forwarders', async (req, res) => {
 app.post('/api/notifications', async (req, res) => {
   try {
     const { email, password, domain, to } = req.body;
+    const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 
     if (!email || !password || !domain || !to) {
       return res.status(400).json({ success: false, error: 'Faltan campos obligatorios' });
     }
 
-    // Fallback credentials if not in env
-    const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://qetgzdxvxbzuyzejbpdn.supabase.co';
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFldGd6ZHh2eGJ6dXl6ZWpicGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MTkzNTQsImV4cCI6MjA4Mzk5NTM1NH0.eAmDOBkmjqBvE08bHE4Ykq0noNLiFO71zscHD83HzB8';
-
-    if (!supabaseKey) {
-      console.error('Missing Supabase Key');
-      return res.status(500).json({ success: false, error: 'Server configuration error: Missing Supabase Key.' });
+    if (!SUPABASE_URL || !supabaseKey) {
+      console.error('Missing Supabase URL or Key');
+      return res.status(500).json({ success: false, error: 'Server configuration error: Missing Supabase credentials.' });
     }
 
-    // 1. Fetch settings from Supabase
     const settingsResponse = await fetch(
       `${SUPABASE_URL}/rest/v1/notification_settings?domain=eq.${domain}&select=*`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
-        }
-      }
+      { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
     );
 
     if (!settingsResponse.ok) {
@@ -389,51 +325,68 @@ app.post('/api/notifications', async (req, res) => {
     }
 
     const settingsList = await settingsResponse.json();
-    const settings = settingsList && settingsList.length > 0 ? settingsList[0] : null;
+    const settings = settingsList?.[0];
 
-    if (!settings || !settings.smtp_host) {
-      return res.status(400).json({
-        success: false,
-        error: 'La configuración SMTP no ha sido establecida para este dominio.'
-      });
+    if (!settings?.smtp_host) {
+      return res.status(400).json({ success: false, error: 'La configuración SMTP no ha sido establecida para este dominio.' });
     }
 
-    // 2. Prepare Template
     let subject = settings.welcome_subject || 'Bienvenido a tu nueva cuenta de correo';
     let body = settings.welcome_body || 'Hola,\n\nTu cuenta de correo ha sido creada:\n\nEmail: {email}\nContraseña: {password}\n\nPuedes acceder via Webmail en: https://webmail.{domain}';
 
-    // Replace placeholders
     subject = subject.replace(/{email}/g, email).replace(/{domain}/g, domain);
     body = body.replace(/{email}/g, email).replace(/{password}/g, password).replace(/{domain}/g, domain);
 
-    // 3. Setup Transporter
     const transporter = nodemailer.createTransport({
       host: settings.smtp_host,
-      port: settings.smtp_port || 587,
-      secure: settings.smtp_port == 465, // true for 465, false for other ports
-      auth: {
-        user: settings.smtp_user,
-        pass: settings.smtp_pass
-      },
-      tls: {
-        rejectUnauthorized: false
-      }
+      port: settings.smtp_port,
+      secure: settings.smtp_port == 465,
+      auth: { user: settings.smtp_user, pass: settings.smtp_pass },
+      tls: { rejectUnauthorized: false }
     });
 
-    // 4. Send Email
     const mailOptions = {
       from: `"${settings.from_name || 'Mail Admin'}" <${settings.from_email || settings.smtp_user}>`,
-      to: to,
+      to,
       subject: subject,
       text: body
     };
 
     await transporter.sendMail(mailOptions);
-
     res.json({ success: true, message: 'Notificación enviada correctamente' });
-
   } catch (error) {
     console.error('Notification error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Test SMTP
+app.post('/api/test-smtp', async (req, res) => {
+  try {
+    const config = req.body;
+
+    if (!config.smtp_host || !config.smtp_port || !config.smtp_user || !config.smtp_pass || !config.test_email) {
+      return res.status(400).json({ success: false, error: 'Missing required SMTP configuration fields or test email.' });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: config.smtp_host,
+      port: config.smtp_port,
+      secure: config.smtp_port == 465,
+      auth: { user: config.smtp_user, pass: config.smtp_pass },
+      tls: { rejectUnauthorized: false }
+    });
+
+    await transporter.sendMail({
+      from: `"${config.from_name || 'SMTP Test'}" <${config.from_email || config.smtp_user}>`,
+      to: config.test_email,
+      subject: 'Prueba de Configuración SMTP',
+      text: 'Este es un correo de prueba para verificar tu configuración SMTP.'
+    });
+
+    res.json({ success: true, message: 'SMTP Test successful' });
+  } catch (error) {
+    console.error('SMTP Test error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -449,13 +402,6 @@ app.get('/api/health', (req, res) => {
 
 const PORT = 5811; // Forced per user request
 app.listen(PORT, () => {
-  console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║     📧 Email Admin Panel Server Running                   ║
-╠═══════════════════════════════════════════════════════════╣
-║  🌐 Local:   http://localhost:${PORT}                       ║
-║  📡 cPanel:  ${CPANEL_HOST}:${CPANEL_PORT}                         ║
-║  👤 User:    ${CPANEL_USERNAME}                               ║
-╚═══════════════════════════════════════════════════════════╝
-  `);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+```

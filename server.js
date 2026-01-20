@@ -83,7 +83,7 @@ app.get('/api/emails', async (req, res) => {
     if (data.status === 1) {
       const emails = data.data.map(email => ({
         email: email.email,
-        user: email.user,
+        user: email.user || email.email.split('@')[0],
         domain: email.domain,
         diskused: email.diskused,
         diskusedpercent: email.diskusedpercent,
@@ -144,30 +144,59 @@ app.post('/api/emails', async (req, res) => {
 });
 
 // Delete email account
-app.delete('/api/emails/:email', async (req, res) => {
+app.delete('/api/emails/:email(*)', async (req, res) => {
   try {
     const rawEmail = req.params.email;
     const { domain } = req.query;
+
+    console.log(`[SERVER] Delete request for: '${rawEmail}' domain: '${domain}'`);
 
     if (!domain) {
       return res.status(400).json({ success: false, error: 'Domain is required' });
     }
 
     const email = getUsername(rawEmail);
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Invalid email format' });
+    }
+
+    // Try sending parameters in BOTH body and URL to be absolutely sure
     const params = new URLSearchParams({ email, domain });
+    const url = `${getCpanelBaseUrl()}/Email/delete_pop?${params.toString()}`;
 
-    console.log(`[API] Deleting email: ${email}@${domain}`);
+    console.log(`[API] Deleting account via cPanel. User: '${email}', Domain: '${domain}'`);
 
-    const response = await fetch(
-      `${getCpanelBaseUrl()}/Email/delete_pop?${params.toString()}`,
-      { headers: getCpanelHeaders(), method: 'POST' }
-    );
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: getCpanelHeaders(),
+      body: JSON.stringify({ email, domain }) // Also send as JSON body since header is application/json
+    });
+
     const data = await response.json();
+    console.log('[API] cPanel result:', JSON.stringify(data));
 
     if (data.status === 1) {
       res.json({ success: true, message: `Email account ${email}@${domain} deleted successfully` });
     } else {
-      res.json({ success: false, error: data.errors?.[0] || 'Failed to delete email account' });
+      const errorMsg = data.errors?.[0] || 'Failed to delete email account';
+      console.error('[API] cPanel Error Details:', data.errors);
+
+      // If we see the empty name error, it means the param didn't reach correctly
+      if (errorMsg.includes('named “”') || errorMsg.includes('named ""')) {
+        console.warn('[API] Detected "empty name" error. Retrying with different param names...');
+        // Fallback: try different param name or full email
+        const retryParams = new URLSearchParams({ email: `${email}@${domain}`, domain });
+        const retryResponse = await fetch(`${getCpanelBaseUrl()}/Email/delete_pop?${retryParams.toString()}`, {
+          method: 'POST',
+          headers: { 'Authorization': `cpanel ${CPANEL_USERNAME}:${CPANEL_API_TOKEN}` }
+        });
+        const retryData = await retryResponse.json();
+        if (retryData.status === 1) {
+          return res.json({ success: true, message: `Deleted successfully (via fallback)` });
+        }
+      }
+
+      res.json({ success: false, error: errorMsg });
     }
   } catch (error) {
     console.error('Error deleting email:', error);
@@ -404,4 +433,3 @@ const PORT = 5811; // Forced per user request
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
-```

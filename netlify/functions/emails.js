@@ -137,16 +137,22 @@ const getUsername = (email) => {
 
 // DELETE /api/emails/:email
 async function deleteEmail(event, segments) {
-    const rawEmail = segments[0];
+    const rawEmail = segments[0]; // This might be 'user' or 'user%40domain.com'
     const domain = event.queryStringParameters?.domain;
 
     if (!rawEmail || !domain) {
         return jsonResponse(400, { success: false, error: 'Email and domain are required' });
     }
 
-    const email = getUsername(rawEmail);
+    // Decode in case it's URL encoded
+    const decodedEmail = decodeURIComponent(rawEmail);
+    const email = getUsername(decodedEmail);
 
-    // Build URL with query parameters (cPanel UAPI often expects this format)
+    if (!email) {
+        return jsonResponse(400, { success: false, error: 'Invalid email format' });
+    }
+
+    // Build URL with query parameters
     const params = new URLSearchParams({
         email: email,
         domain: domain
@@ -159,7 +165,8 @@ async function deleteEmail(event, segments) {
     try {
         const response = await fetch(cpanelUrl, {
             method: 'POST',
-            headers: getCpanelHeaders()
+            headers: getCpanelHeaders(),
+            body: JSON.stringify({ email, domain }) // Send as JSON body too
         });
 
         const data = await response.json();
@@ -168,7 +175,22 @@ async function deleteEmail(event, segments) {
         if (data.status === 1) {
             return jsonResponse(200, { success: true, message: `Email account ${email}@${domain} deleted successfully` });
         } else {
-            return jsonResponse(200, { success: false, error: data.errors?.[0] || 'Failed to delete email account' });
+            console.error('[CPANEL ERROR]', data.errors);
+            // Fallback logic for "named empty" error, similar to server.js
+            const errorMsg = data.errors?.[0] || 'Failed to delete email account';
+            if (errorMsg.includes('named “”') || errorMsg.includes('named ""')) {
+                console.warn('[API] Detected "empty name" error. Retrying with full email...');
+                const retryParams = new URLSearchParams({ email: `${email}@${domain}`, domain });
+                const retryResponse = await fetch(`${getCpanelBaseUrl()}/Email/delete_pop?${retryParams.toString()}`, {
+                    method: 'POST',
+                    headers: getCpanelHeaders()
+                });
+                const retryData = await retryResponse.json();
+                if (retryData.status === 1) {
+                    return jsonResponse(200, { success: true, message: `Deleted successfully (via fallback)` });
+                }
+            }
+            return jsonResponse(200, { success: false, error: errorMsg });
         }
     } catch (error) {
         console.error('[DEBUG DELETE] Error:', error);

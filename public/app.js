@@ -371,14 +371,14 @@ const UI = {
             const quotaClass = quotaPercent > 80 ? 'high' : quotaPercent > 50 ? 'medium' : 'low';
 
             return `
-                <tr data-email="${email.user}" data-domain="${email.domain}">
+                <tr data-email="${email.email}" data-domain="${email.domain}">
                     <td>
                         <div class="checkbox-cell">
                             <input type="checkbox" class="email-checkbox" 
-                                value="${email.user}" 
+                                value="${email.email}" 
                                 data-domain="${email.domain}"
-                                onchange="toggleSelectEmail('${email.user}', this.checked)"
-                                ${state.selectedEmails.has(email.user) ? 'checked' : ''}>
+                                onchange="toggleSelectEmail('${email.email}', this.checked)"
+                                ${state.selectedEmails.has(email.email) ? 'checked' : ''}>
                         </div>
                     </td>
                     <td>
@@ -575,8 +575,10 @@ const Actions = {
         if (!state.emailToDelete) return;
 
         const { email, domain } = state.emailToDelete;
+        UI.showToast('info', 'Procesando', `Eliminando cuenta ${email}@${domain}...`);
 
         try {
+            console.log(`[DELETE] Calling API to delete ${email}@${domain}`);
             await API.deleteEmail(email, domain);
             UI.showToast('success', 'Cuenta Eliminada', `${email}@${domain}`);
 
@@ -589,22 +591,37 @@ const Actions = {
             // Reload emails
             await loadEmails();
         } catch (error) {
-            UI.showToast('error', 'Error', error.message);
+            console.error('[DELETE] Error:', error);
+            UI.showToast('error', 'Error', `No se pudo eliminar: ${error.message}`);
         }
     },
 
-    async deleteSelected() {
-        console.log('[BULK DELETE] Button clicked. Selected count:', state.selectedEmails.size);
+    deleteSelected() {
+        console.log('[BULK DELETE] Button clicked. Selected items:', Array.from(state.selectedEmails));
+
         if (state.selectedEmails.size === 0) {
             UI.showToast('warning', 'Sin selección', 'No hay correos seleccionados para eliminar');
             return;
         }
 
-        if (!confirm(`¿Estás seguro de que deseas eliminar ${state.selectedEmails.size} cuentas seleccionadas?`)) {
-            return;
-        }
+        const modal = document.getElementById('confirmBulkDeleteModal');
+        const countText = document.getElementById('bulkDeleteCountText');
 
-        // Get progress modal elements
+        if (modal && countText) {
+            countText.textContent = `Se eliminarán ${state.selectedEmails.size} cuentas permanentemente.`;
+            UI.openModal(modal);
+        } else {
+            console.error('Bulk confirm modal not found, executing directly');
+            window.Actions.executeBulkDelete();
+        }
+    },
+
+    async executeBulkDelete() {
+        UI.showToast('info', 'Iniciando', `Comenzando eliminación de ${state.selectedEmails.size} cuentas...`);
+        // Close confirm modal first
+        const confirmModal = document.getElementById('confirmBulkDeleteModal');
+        if (confirmModal) UI.closeModal(confirmModal);
+
         const progressModal = document.getElementById('progressModal');
         const progressTitle = document.getElementById('progressTitle');
         const progressFill = document.getElementById('progressFill');
@@ -612,21 +629,37 @@ const Actions = {
         const progressTotal = document.getElementById('progressTotal');
         const progressLog = document.getElementById('progressLog');
 
-        // Build list with domain info from filteredEmails
+        if (!progressModal) {
+            console.error('[BULK DELETE] Progress modal not found in DOM');
+            UI.showToast('error', 'Error del Sistema', 'No se pudo encontrar el modal de progreso');
+            return;
+        }
+
         const emailsToDelete = [];
-        for (const user of state.selectedEmails) {
-            const emailObj = state.filteredEmails.find(e => e.user === user);
+        for (const identifier of state.selectedEmails) {
+            // identifier is now full email (e.g. user@domain.com)
+            const emailObj = state.filteredEmails.find(e => e.email === identifier || e.user === identifier);
+
             if (emailObj) {
-                emailsToDelete.push({ user: emailObj.user, domain: emailObj.domain });
-            } else {
-                // Fallback to current domain if not found
-                emailsToDelete.push({ user, domain: state.currentDomain });
+                // Pass FULL email to server for robustness
+                const user = emailObj.email;
+                const domain = emailObj.domain;
+                if (user && domain) {
+                    emailsToDelete.push({
+                        user, // sending full email as user identifier
+                        domain,
+                        full: emailObj.email
+                    });
+                }
+            } else if (identifier.includes('@')) {
+                // Fallback for full email strings
+                const [userPart, domain] = identifier.split('@');
+                emailsToDelete.push({ user: identifier, domain, full: identifier });
             }
         }
 
-        console.log('[BULK DELETE] Emails to delete:', emailsToDelete);
+        console.log('[BULK DELETE] Process list prepared:', emailsToDelete.length, 'emails');
 
-        // Initialize modal
         progressTitle.textContent = 'Eliminando correos...';
         progressFill.style.width = '0%';
         progressCurrent.textContent = '0';
@@ -638,28 +671,30 @@ const Actions = {
         let failCount = 0;
 
         for (let i = 0; i < emailsToDelete.length; i++) {
-            const { user, domain } = emailsToDelete[i];
-            const fullEmail = `${user}@${domain}`;
+            const { user, domain, full } = emailsToDelete[i];
 
-            // Add pending log entry
             const logEntry = document.createElement('div');
             logEntry.className = 'progress-log-entry pending';
-            logEntry.innerHTML = `<span class="log-icon">⏳</span> <span>${fullEmail}</span>`;
+            logEntry.innerHTML = `<span class="log-icon">⏳</span> <span>${full}</span>`;
             progressLog.appendChild(logEntry);
             progressLog.scrollTop = progressLog.scrollHeight;
 
+            // Allow UI to update
+            await new Promise(resolve => setTimeout(resolve, 50));
+
             try {
-                console.log(`[BULK DELETE] Deleting ${fullEmail}...`);
+                if (!user) throw new Error('Nombre de usuario inválido');
+
+                // Ensure deleting against correct domain
                 await API.deleteEmail(user, domain);
                 successCount++;
                 logEntry.className = 'progress-log-entry success';
-                logEntry.innerHTML = `<span class="log-icon">✅</span> <span>${fullEmail} eliminado</span>`;
-                console.log(`[BULK DELETE] Success: ${fullEmail}`);
+                logEntry.innerHTML = `<span class="log-icon">✅</span> <span>${full} eliminado</span>`;
             } catch (error) {
-                console.error(`[BULK DELETE] Error deleting ${fullEmail}:`, error);
+                console.error(`[BULK DELETE] Error in ${full}:`, error);
                 failCount++;
                 logEntry.className = 'progress-log-entry error';
-                logEntry.innerHTML = `<span class="log-icon">❌</span> <span>${fullEmail}: ${error.message}</span>`;
+                logEntry.innerHTML = `<span class="log-icon">❌</span> <span>${full}: ${error.message}</span>`;
             }
 
             // Update progress
@@ -684,7 +719,7 @@ const Actions = {
             if (failCount > 0) {
                 UI.showToast('warning', 'Errores', `Hubo problemas al eliminar ${failCount} cuentas.`);
             }
-        }, 1500);
+        }, 2000);
     }
 };
 
@@ -807,6 +842,7 @@ function getActivityTitle(type) {
 // Data Loading Functions
 // ============================================
 async function loadDomains() {
+    UI.showToast('info', 'Actualizando', 'Cargando lista de dominios...');
     try {
         let domains = await API.getDomains();
 
@@ -820,6 +856,9 @@ async function loadDomains() {
                 UI.showToast('warning', 'Sin Acceso', 'No tienes acceso a ningún dominio. Contacta al administrador.');
             }
         }
+
+        // Sort domains alphabetically
+        domains.sort((a, b) => a.localeCompare(b));
 
         state.domains = domains;
 
@@ -838,6 +877,7 @@ async function loadDomains() {
 }
 
 async function loadEmails() {
+    UI.showToast('info', 'Actualizando', `Cargando cuentas para ${state.currentDomain}...`);
     // Reset stats to indicate loading
     elements.totalEmails.textContent = '-';
     elements.activeEmails.textContent = '-';
@@ -1862,7 +1902,7 @@ window.toggleSelectEmail = function (user, checked) {
 };
 
 window.toggleSelectAll = function (checked) {
-    const visibleEmails = state.filteredEmails.map(e => e.user);
+    const visibleEmails = state.filteredEmails.map(e => e.email);
 
     if (checked) {
         visibleEmails.forEach(user => state.selectedEmails.add(user));

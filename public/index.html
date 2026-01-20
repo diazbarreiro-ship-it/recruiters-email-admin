@@ -541,6 +541,27 @@
         </div>
     </div>
 
+    <!-- Confirm Bulk Delete Modal -->
+    <div class="modal-overlay" id="confirmBulkDeleteModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>⚠️ Confirmar Eliminación Masiva</h3>
+                <button class="modal-close"
+                    onclick="UI.closeModal(document.getElementById('confirmBulkDeleteModal'))">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar las cuentas seleccionadas?</p>
+                <p class="warning-text" id="bulkDeleteCountText">Se eliminarán X cuentas permanentemente.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost"
+                    onclick="UI.closeModal(document.getElementById('confirmBulkDeleteModal'))">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="window.Actions.executeBulkDelete()">🗑️ Eliminar
+                    Todo</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Progress Modal for Bulk Operations -->
     <div class="modal-overlay" id="progressModal">
         <div class="modal modal-sm">
@@ -554,7 +575,8 @@
                     </div>
                     <p class="progress-text"><span id="progressCurrent">0</span> / <span id="progressTotal">0</span></p>
                 </div>
-                <div class="progress-log" id="progressLog" style="max-height: 200px; overflow-y: auto; font-size: 12px; background: var(--color-bg-tertiary); padding: 10px; border-radius: 8px; margin-top: 12px;">
+                <div class="progress-log" id="progressLog"
+                    style="max-height: 200px; overflow-y: auto; font-size: 12px; background: var(--color-bg-tertiary); padding: 10px; border-radius: 8px; margin-top: 12px;">
                     <!-- Log entries will appear here -->
                 </div>
             </div>

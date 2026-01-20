@@ -117,17 +117,23 @@ app.post('/api/emails', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email, password, and domain are required' });
     }
 
-    // Use query params for more reliable cPanel UAPI calls
-    const params = new URLSearchParams({
+    // Build request payload
+    const payload = {
       email,
       password,
       quota: quota.toString(),
       domain
-    });
+    };
+
+    console.log(`[API] Creating account with payload:`, { ...payload, password: '***' });
 
     const response = await fetch(
-      `${getCpanelBaseUrl()}/Email/add_pop?${params.toString()}`,
-      { headers: getCpanelHeaders(), method: 'POST' }
+      `${getCpanelBaseUrl()}/Email/add_pop`,
+      {
+        headers: getCpanelHeaders(),
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
     );
 
     const data = await response.json();
@@ -218,11 +224,16 @@ app.put('/api/emails/:email/password', async (req, res) => {
       });
     }
 
-    const params = new URLSearchParams({ email, password, domain });
+    const payload = { email, password, domain };
+    console.log(`[API] Changing password for ${email}@${domain}`);
 
     const response = await fetch(
-      `${getCpanelBaseUrl()}/Email/passwd_pop?${params.toString()}`,
-      { headers: getCpanelHeaders(), method: 'POST' }
+      `${getCpanelBaseUrl()}/Email/passwd_pop`,
+      {
+        headers: getCpanelHeaders(),
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }
     );
     const data = await response.json();
 

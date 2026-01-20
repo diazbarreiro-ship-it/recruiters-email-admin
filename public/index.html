@@ -541,6 +541,26 @@
         </div>
     </div>
 
+    <!-- Progress Modal for Bulk Operations -->
+    <div class="modal-overlay" id="progressModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>⏳ <span id="progressTitle">Procesando...</span></h3>
+            </div>
+            <div class="modal-body">
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <p class="progress-text"><span id="progressCurrent">0</span> / <span id="progressTotal">0</span></p>
+                </div>
+                <div class="progress-log" id="progressLog" style="max-height: 200px; overflow-y: auto; font-size: 12px; background: var(--color-bg-tertiary); padding: 10px; border-radius: 8px; margin-top: 12px;">
+                    <!-- Log entries will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div class="toast-container" id="toastContainer"></div>
 

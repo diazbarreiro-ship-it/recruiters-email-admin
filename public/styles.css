@@ -1945,3 +1945,59 @@ th.sortable.sorted-desc .sort-icon {
 .checkbox-cell input {
     transform: scale(1.1);
 }
+
+/* Progress Modal Styles */
+.progress-container {
+    text-align: center;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--color-bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.progress-log {
+    text-align: left;
+    font-family: monospace;
+}
+
+.progress-log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-log-entry:last-child {
+    border-bottom: none;
+}
+
+.progress-log-entry.success .log-icon {
+    color: var(--color-success);
+}
+
+.progress-log-entry.error .log-icon {
+    color: var(--color-danger);
+}
+
+.progress-log-entry.pending .log-icon {
+    color: var(--color-warning);
+}

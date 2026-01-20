@@ -7,8 +7,16 @@ exports.handler = async (event) => {
         return { statusCode: 200, headers: corsHeaders, body: '' };
     }
 
-    const path = event.path.replace('/.netlify/functions/emails', '');
+    // Parse path - handle both /api/emails/... and /.netlify/functions/emails/...
+    let path = event.path;
+    console.log('[DEBUG] Original path:', path);
+
+    // Remove known prefixes
+    path = path.replace('/.netlify/functions/emails', '');
+    path = path.replace('/api/emails', '');
+
     const segments = path.split('/').filter(Boolean);
+    console.log('[DEBUG] Parsed segments:', segments);
 
     try {
         switch (event.httpMethod) {

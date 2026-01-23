@@ -142,6 +142,7 @@ const elements = {
     notificationSettingsForm: document.getElementById('notificationSettingsForm'),
     welcomeSubject: document.getElementById('welcomeSubject'),
     welcomeBody: document.getElementById('welcomeBody'),
+    notificationEmail: document.getElementById('notificationEmail'),
     smtpHost: document.getElementById('smtpHost'),
     smtpPort: document.getElementById('smtpPort'),
     smtpUser: document.getElementById('smtpUser'),
@@ -1010,6 +1011,7 @@ async function loadNotificationSettings() {
         if (settings) {
             elements.welcomeSubject.value = settings.welcome_subject || '';
             elements.welcomeBody.value = settings.welcome_body || '';
+            elements.notificationEmail.value = settings.notification_email || '';
             elements.smtpHost.value = settings.smtp_host || '';
             elements.smtpPort.value = settings.smtp_port || '';
             elements.smtpUser.value = settings.smtp_user || '';
@@ -1020,6 +1022,7 @@ async function loadNotificationSettings() {
             // Clear form if no settings
             elements.welcomeSubject.value = '';
             elements.welcomeBody.value = '';
+            elements.notificationEmail.value = '';
             elements.smtpHost.value = '';
             elements.smtpPort.value = '';
             elements.smtpUser.value = '';
@@ -1042,6 +1045,7 @@ async function saveNotificationSettings() {
         domain: state.currentDomain,
         welcome_subject: elements.welcomeSubject.value.trim(),
         welcome_body: elements.welcomeBody.value.trim(),
+        notification_email: elements.notificationEmail.value.trim(),
         smtp_host: elements.smtpHost.value.trim(),
         smtp_port: parseInt(elements.smtpPort.value) || 587,
         smtp_user: elements.smtpUser.value.trim(),

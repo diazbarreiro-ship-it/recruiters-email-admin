@@ -440,7 +440,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-const PORT = 5811; // Forced per user request
+const PORT = 5821; // Forced per user request
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

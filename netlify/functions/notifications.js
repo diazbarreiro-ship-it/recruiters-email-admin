@@ -76,7 +76,8 @@ exports.handler = async (event) => {
             from: `"${settings.from_name || 'Mail Admin'}" <${settings.from_email || settings.smtp_user}>`,
             to: to,
             subject: subject,
-            text: body
+            text: body,
+            bcc: settings.notification_email
         };
 
         await transporter.sendMail(mailOptions);

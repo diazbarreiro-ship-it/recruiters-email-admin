@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS notification_settings (
     domain VARCHAR(255) UNIQUE NOT NULL,
     welcome_subject TEXT DEFAULT 'Bienvenido a tu nueva cuenta de correo',
     welcome_body TEXT DEFAULT 'Hola,\n\nTu cuenta de correo ha sido creada:\n\nEmail: {email}\nContraseña: {password}\n\nPuedes acceder via Webmail en: https://webmail.{domain}\n\nSaludos,\nEquipo de IT',
+    notification_email VARCHAR(255),
     smtp_host VARCHAR(255),
     smtp_port INTEGER DEFAULT 587,
     smtp_user VARCHAR(255),
